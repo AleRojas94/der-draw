@@ -28,11 +28,25 @@ function svgEl(tag, attrs = {}) {
    CLASE: Attribute
 ───────────────────────────────────────────── */
 class Attribute {
-  constructor(name = 'atributo', pk = false, fk = false, nn = false) {
+  constructor(name = 'atributo', pk = false, fk = false, nn = false, dataType = '', length = '') {
     this.id = uid(); this.name = name; this.pk = pk; this.fk = fk; this.nn = nn;
+    this.dataType = dataType;  // ej: 'Integer', 'Varchar', 'Date'
+    this.length   = length;    // ej: '50', '255' (solo para tipos que lo admiten)
   }
-  toJSON() { return { id: this.id, name: this.name, pk: this.pk, fk: this.fk, nn: this.nn }; }
-  static fromJSON(d) { const a = new Attribute(d.name, d.pk, d.fk, d.nn); a.id = d.id; return a; }
+  /** Etiqueta compacta para mostrar en la entidad: "Varchar(50)", "Integer", "" */
+  get typeLabel() {
+    if (!this.dataType) return '';
+    const needsLen = ['Varchar','NVarchar','Char','NChar','Binary'].includes(this.dataType);
+    return needsLen && this.length ? `${this.dataType}(${this.length})` : this.dataType;
+  }
+  toJSON() {
+    return { id: this.id, name: this.name, pk: this.pk, fk: this.fk, nn: this.nn,
+             dataType: this.dataType, length: this.length };
+  }
+  static fromJSON(d) {
+    const a = new Attribute(d.name, d.pk, d.fk, d.nn, d.dataType || '', d.length || '');
+    a.id = d.id; return a;
+  }
 }
 
 /* ─────────────────────────────────────────────
@@ -281,6 +295,15 @@ class SVGEntityRenderer {
       fill: attr.pk ? '#f6c90e' : (attr.fk ? 'var(--accent2)' : 'var(--fg)') });
     nameEl.textContent = attr.name + (attr.nn ? ' *' : '');
     row.appendChild(nameEl);
+
+    // Tipo de dato alineado a la derecha si existe
+    if (attr.typeLabel) {
+      const typeEl = svgEl('text', { x: W - 8, y: y+AH/2, 'dominant-baseline': 'middle',
+        'text-anchor': 'end', 'font-family': 'JetBrains Mono, monospace', 'font-size': '10',
+        fill: 'var(--fg-subtle)' });
+      typeEl.textContent = attr.typeLabel;
+      row.appendChild(typeEl);
+    }
 
     bg.addEventListener('dblclick', (e) => {
       e.stopPropagation();
@@ -729,41 +752,134 @@ class App {
   openAttrEditor(entity, attr, groupEl) {
     clearPopovers();
     const isNew = !attr;
-    if (isNew) attr = new Attribute('', false, false, false);
+    if (isNew) attr = new Attribute('', false, false, false, '', '');
+
+    // Grupos de tipos de dato organizados por categoría
+    const TYPE_GROUPS = [
+      { label: 'Numérico',
+        types: ['Byte','Integer','LongInteger','Serial','Decimal','Number','Money','ShortFloat','Float','LongFloat'] },
+      { label: 'Texto',
+        types: ['Char','NChar','Varchar','NVarchar'] },
+      { label: 'Fecha y hora',
+        types: ['Date','Time','DateTime','Timestamp'] },
+      { label: 'Otros',
+        types: ['Text','Binary','Boolean'] },
+    ];
+    // Tipos que admiten longitud
+    const NEEDS_LENGTH = ['Varchar','NVarchar','Char','NChar','Binary'];
+
     const pop = document.createElement('div');
-    pop.className = 'attr-popover';
+    pop.className = 'attr-popover attr-popover-lg';
     const rect = groupEl.getBoundingClientRect();
-    pop.style.left = (rect.right + 8) + 'px'; pop.style.top = rect.top + 'px';
+    pop.style.left = (rect.right + 8) + 'px';
+    pop.style.top  = rect.top + 'px';
+
+    const typeRadios = TYPE_GROUPS.map(grp => `
+      <div class="ap-type-group">
+        <span class="ap-type-group-label">${grp.label}</span>
+        <div class="ap-type-radios">
+          ${grp.types.map(t => `
+            <label class="ap-type-radio ${attr.dataType===t?'selected':''}">
+              <input type="radio" name="ap-type" value="${t}" ${attr.dataType===t?'checked':''}> ${t}
+            </label>`).join('')}
+        </div>
+      </div>`).join('');
+
     pop.innerHTML = `
       <h4>${isNew ? 'Nuevo Atributo' : 'Editar Atributo'}</h4>
-      <div class="attr-popover-row"><input type="text" id="ap-name" placeholder="nombre_atributo" value="${attr.name}" /></div>
+
+      <div class="ap-section-label">Nombre</div>
+      <div class="attr-popover-row">
+        <input type="text" id="ap-name" placeholder="nombre_atributo" value="${attr.name}" />
+      </div>
+
+      <div class="ap-section-label">Tipo de dato</div>
+      <div class="ap-type-length-row">
+        <div class="ap-type-length-col">
+          <label class="ap-meta-label">Tipo</label>
+          <input type="text" id="ap-type-display" class="ap-type-display" placeholder="ninguno"
+            value="${attr.dataType}" readonly />
+        </div>
+        <div class="ap-type-length-col ap-length-col" id="ap-length-col"
+          style="display:${NEEDS_LENGTH.includes(attr.dataType)?'flex':'none'}">
+          <label class="ap-meta-label">Longitud</label>
+          <input type="number" id="ap-length" class="ap-length-input" min="1" max="65535"
+            placeholder="ej: 50" value="${attr.length}" />
+        </div>
+        <button class="btn-xs ap-clear-type" id="ap-clear-type" title="Quitar tipo">✕</button>
+      </div>
+
+      <div class="ap-type-selector" id="ap-type-selector">
+        ${typeRadios}
+      </div>
+
+      <div class="ap-section-label">Restricciones</div>
       <div class="attr-popover-flags">
         <label class="flag-checkbox"><input type="checkbox" id="ap-pk" ${attr.pk?'checked':''}> PK</label>
         <label class="flag-checkbox"><input type="checkbox" id="ap-fk" ${attr.fk?'checked':''}> FK</label>
         <label class="flag-checkbox"><input type="checkbox" id="ap-nn" ${attr.nn?'checked':''}> NN</label>
       </div>
+
       <div class="attr-popover-actions">
         ${!isNew ? '<button class="btn-xs del" id="ap-del">Eliminar</button>' : ''}
         <button class="btn-xs" id="ap-cancel">Cancelar</button>
         <button class="btn-xs primary" id="ap-save">${isNew ? 'Agregar' : 'Guardar'}</button>
       </div>`;
+
     document.body.appendChild(pop);
     pop.querySelector('#ap-name').focus();
+
+    // Actualizar display del tipo al seleccionar un radio
+    pop.querySelectorAll('input[name="ap-type"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        pop.querySelector('#ap-type-display').value = radio.value;
+        pop.querySelectorAll('.ap-type-radio').forEach(l => l.classList.remove('selected'));
+        radio.closest('.ap-type-radio').classList.add('selected');
+        const showLen = NEEDS_LENGTH.includes(radio.value);
+        pop.querySelector('#ap-length-col').style.display = showLen ? 'flex' : 'none';
+      });
+    });
+
+    // Botón limpiar tipo
+    pop.querySelector('#ap-clear-type').addEventListener('click', () => {
+      pop.querySelectorAll('input[name="ap-type"]').forEach(r => r.checked = false);
+      pop.querySelectorAll('.ap-type-radio').forEach(l => l.classList.remove('selected'));
+      pop.querySelector('#ap-type-display').value = '';
+      pop.querySelector('#ap-length-col').style.display = 'none';
+    });
+
     pop.querySelector('#ap-cancel').addEventListener('click', () => pop.remove());
-    if (!isNew) pop.querySelector('#ap-del').addEventListener('click', () => { entity.removeAttribute(attr.id); this._refreshEntity(entity); pop.remove(); });
+    if (!isNew) pop.querySelector('#ap-del').addEventListener('click', () => {
+      entity.removeAttribute(attr.id); this._refreshEntity(entity); pop.remove();
+    });
+
     pop.querySelector('#ap-save').addEventListener('click', () => {
       const name = pop.querySelector('#ap-name').value.trim();
       if (!name) { pop.querySelector('#ap-name').focus(); return; }
-      attr.name = name; attr.pk = pop.querySelector('#ap-pk').checked;
-      attr.fk = pop.querySelector('#ap-fk').checked; attr.nn = pop.querySelector('#ap-nn').checked;
+      attr.name     = name;
+      attr.pk       = pop.querySelector('#ap-pk').checked;
+      attr.fk       = pop.querySelector('#ap-fk').checked;
+      attr.nn       = pop.querySelector('#ap-nn').checked;
+      attr.dataType = pop.querySelector('#ap-type-display').value;
+      attr.length   = NEEDS_LENGTH.includes(attr.dataType)
+                        ? (pop.querySelector('#ap-length').value || '')
+                        : '';
       if (isNew) entity.addAttribute(attr);
       this._refreshEntity(entity); pop.remove();
     });
-    pop.querySelector('#ap-name').addEventListener('keydown', (e) => { if(e.key==='Enter')pop.querySelector('#ap-save').click(); if(e.key==='Escape')pop.remove(); });
+
+    pop.querySelector('#ap-name').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') pop.querySelector('#ap-save').click();
+      if (e.key === 'Escape') pop.remove();
+    });
+
     setTimeout(() => {
-      const dismiss = (e) => { if (!pop.contains(e.target)){pop.remove();document.removeEventListener('mousedown',dismiss);} };
+      const dismiss = (e) => {
+        if (!pop.contains(e.target)) { pop.remove(); document.removeEventListener('mousedown', dismiss); }
+      };
       document.addEventListener('mousedown', dismiss);
     }, 100);
+
     requestAnimationFrame(() => {
       const pr = pop.getBoundingClientRect();
       if (pr.right  > window.innerWidth)  pop.style.left = (rect.left - pr.width - 8) + 'px';
