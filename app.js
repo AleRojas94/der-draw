@@ -56,6 +56,7 @@ class Entity {
   constructor(name = 'ENTIDAD', x = 100, y = 100) {
     this.id = uid(); this.name = name; this.x = x; this.y = y;
     this.attributes = []; this.width = 200; this.headerH = 38; this.attrH = 26; this.footerH = 28;
+    this.isWeak = false; // entidad débil: doble borde
   }
   get height() { return this.headerH + this.attributes.length * this.attrH + this.footerH; }
   addAttribute(attr)  { this.attributes.push(attr); }
@@ -79,11 +80,13 @@ class Entity {
   }
   toJSON() {
     return { id: this.id, name: this.name, x: this.x, y: this.y,
+             isWeak: this.isWeak,
              attributes: this.attributes.map(a => a.toJSON()) };
   }
   static fromJSON(d) {
     const e = new Entity(d.name, d.x, d.y);
     e.id = d.id;
+    e.isWeak = d.isWeak === true; // compatibilidad con diagramas anteriores
     e.attributes = (d.attributes || []).map(a => Attribute.fromJSON(a));
     return e;
   }
@@ -93,9 +96,10 @@ class Entity {
    CLASE: Relationship
 ───────────────────────────────────────────── */
 class Relationship {
-  constructor(fromId, toId, cardFrom = '1', cardTo = '0..N', label = '') {
+  constructor(fromId, toId, cardFrom = '1', cardTo = '0..N', label = '', identifying = false) {
     this.id = uid(); this.fromId = fromId; this.toId = toId;
     this.cardFrom = cardFrom; this.cardTo = cardTo; this.label = label;
+    this.identifying = identifying; // relación identificadora: doble línea
   }
   static cardToType(card) {
     const map = { '1': 'one', '0..1': 'zero_one', '1..N': 'one_many', '0..N': 'zero_many' };
@@ -103,7 +107,8 @@ class Relationship {
   }
   toJSON() {
     return { id: this.id, fromId: this.fromId, toId: this.toId,
-             cardFrom: this.cardFrom, cardTo: this.cardTo, label: this.label };
+             cardFrom: this.cardFrom, cardTo: this.cardTo, label: this.label,
+             identifying: this.identifying };
   }
   static fromJSON(d) {
     let cardFrom = d.cardFrom, cardTo = d.cardTo;
@@ -112,7 +117,7 @@ class Relationship {
       const lg = m[d.cardinality] || {f:'1',t:'0..N'};
       cardFrom = lg.f; cardTo = lg.t;
     }
-    const r = new Relationship(d.fromId, d.toId, cardFrom, cardTo, d.label || '');
+    const r = new Relationship(d.fromId, d.toId, cardFrom, cardTo, d.label || '', d.identifying === true);
     r.id = d.id; return r;
   }
 }
@@ -241,16 +246,72 @@ class SVGEntityRenderer {
 
     const W = entity.width, HH = entity.headerH, AH = entity.attrH;
 
+    // ── Caja principal ──
     g.appendChild(svgEl('rect', { class: 'entity-box', width: W, height: entity.height, rx: 8 }));
+
+    // ── Doble borde para entidad débil (rect interior a 4px de margen) ──
+    if (entity.isWeak) {
+      const M = 4; // margen interior del doble borde
+      g.appendChild(svgEl('rect', {
+        class: 'entity-weak-inner',
+        x: M, y: M, width: W - M*2, height: entity.height - M*2, rx: 5,
+      }));
+    }
+
     g.appendChild(svgEl('rect', { class: 'entity-header', width: W, height: HH, rx: 8 }));
     g.appendChild(svgEl('rect', { class: 'entity-header', y: HH / 2, width: W, height: HH / 2 }));
 
+    // ── Título ──
     const title = svgEl('text', { class: 'entity-title', x: W/2, y: HH/2,
       'dominant-baseline': 'middle', 'text-anchor': 'middle' });
     title.textContent = entity.name;
     title.style.cursor = 'text';
     title.addEventListener('dblclick', (e) => { e.stopPropagation(); app.startInlineEditTitle(entity, title, g); });
     g.appendChild(title);
+
+    // ── Badge WEAK con tooltip didáctico ────────────────────────────────────
+    if (entity.isWeak) {
+      const badge = svgEl('g', { class: 'entity-weak-badge' });
+      badge.style.cursor = 'help';
+
+      const br = svgEl('rect', { x: W - 42, y: 4, width: 36, height: 14, rx: 3,
+        fill: 'var(--weak-badge-bg)', stroke: 'var(--weak-badge-border)', 'stroke-width': '1' });
+      const bt = svgEl('text', { x: W - 24, y: 11, 'dominant-baseline': 'middle', 'text-anchor': 'middle',
+        'font-family': 'JetBrains Mono, monospace', 'font-size': '8', 'font-weight': '700',
+        fill: 'var(--weak-badge-color)' });
+      bt.textContent = 'WEAK';
+      badge.appendChild(br); badge.appendChild(bt);
+
+      // Tooltip HTML contextual — muestra estado y guía al estudiante
+      badge.addEventListener('mouseenter', (e) => {
+        const hasIdentifying = app.diagram.relationships.some(
+          r => r.identifying && (r.fromId === entity.id || r.toId === entity.id)
+        );
+        SVGEntityRenderer._showWeakTooltip(e, entity, hasIdentifying);
+      });
+      badge.addEventListener('mousemove', SVGEntityRenderer._moveTooltip);
+      badge.addEventListener('mouseleave', SVGEntityRenderer._hideTooltip);
+
+      g.appendChild(badge);
+    }
+
+    // ── Botón toggle entidad débil (esquina superior izquierda del header) ──
+    const weakBtn = svgEl('g', { class: 'entity-weak-toggle', title: entity.isWeak ? 'Convertir a entidad normal' : 'Marcar como entidad débil' });
+    const weakBtnBg = svgEl('rect', { x: 4, y: 4, width: 14, height: 14, rx: 3,
+      fill: entity.isWeak ? 'var(--weak-btn-active)' : 'transparent',
+      stroke: entity.isWeak ? 'var(--weak-badge-border)' : 'transparent', 'stroke-width': '1' });
+    const weakBtnIco = svgEl('text', { x: 11, y: 11, 'dominant-baseline': 'middle', 'text-anchor': 'middle',
+      'font-size': '9', fill: entity.isWeak ? 'var(--weak-badge-color)' : 'var(--fg-subtle)' });
+    weakBtnIco.textContent = 'W';
+    weakBtn.appendChild(weakBtnBg); weakBtn.appendChild(weakBtnIco);
+    weakBtn.style.cursor = 'pointer';
+    weakBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      entity.isWeak = !entity.isWeak;
+      app._refreshEntity(entity);
+      app._checkWeakEntities();
+    });
+    g.appendChild(weakBtn);
 
     g.appendChild(svgEl('line', { class: 'attr-sep', x1: 0, y1: HH, x2: W, y2: HH }));
     entity.attributes.forEach((attr, i) => g.appendChild(SVGEntityRenderer._attrRow(attr, entity, i, app)));
@@ -310,6 +371,57 @@ class SVGEntityRenderer {
       app.openAttrEditor(entity, attr, document.querySelector(`[data-id="${entity.id}"]`));
     });
     return row;
+  }
+
+  /** Muestra el tooltip didáctico del badge WEAK */
+  static _showWeakTooltip(e, entity, hasIdentifying) {
+    SVGEntityRenderer._hideTooltip(); // limpiar previo
+    const tip = document.createElement('div');
+    tip.id = 'weak-tooltip';
+    tip.className = 'weak-tooltip' + (hasIdentifying ? '' : ' weak-tooltip-warn');
+
+    if (hasIdentifying) {
+      tip.innerHTML = `
+        <div class="wtt-title">✓ Entidad Débil</div>
+        <div class="wtt-body">
+          Esta entidad depende de otra para existir.<br>
+          Tiene una <strong>relación identificadora</strong> conectada.
+        </div>`;
+    } else {
+      tip.innerHTML = `
+        <div class="wtt-title">⚠ Entidad Débil sin relación identificadora</div>
+        <div class="wtt-body">
+          Las entidades débiles <strong>necesitan una relación identificadora</strong>
+          que las conecte con su entidad fuerte.<br><br>
+          <span class="wtt-action">¿Cómo resolverlo?</span><br>
+          Creá una relación con otra entidad y marcá el
+          checkbox <em>"Relación identificadora"</em> en el diálogo.
+        </div>`;
+    }
+
+    document.body.appendChild(tip);
+    SVGEntityRenderer._moveTooltip(e);
+  }
+
+  /** Mueve el tooltip siguiendo el mouse */
+  static _moveTooltip(e) {
+    const tip = document.getElementById('weak-tooltip');
+    if (!tip) return;
+    const margin = 14;
+    let x = e.clientX + margin;
+    let y = e.clientY + margin;
+    // Evitar que se salga de la pantalla
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    if (x + tw > window.innerWidth  - 8) x = e.clientX - tw - margin;
+    if (y + th > window.innerHeight - 8) y = e.clientY - th - margin;
+    tip.style.left = x + 'px';
+    tip.style.top  = y + 'px';
+  }
+
+  /** Elimina el tooltip */
+  static _hideTooltip() {
+    const tip = document.getElementById('weak-tooltip');
+    if (tip) tip.remove();
   }
 
   static _badge(text, x, cy, color, bg) {
@@ -390,16 +502,18 @@ class SVGRelationRenderer {
     // angle = atan2(toPort - fromPort) es constante y predecible,
     // por lo que los marcadores Crow's Foot siempre quedan alineados.
 
+    // ── Línea(s) de la relación ──────────────────────────────────────────
     // Área de clic invisible más ancha (facilita la selección)
     g.appendChild(svgEl('line', {
       x1: fromPort.x, y1: fromPort.y, x2: toPort.x, y2: toPort.y,
       stroke: 'transparent', 'stroke-width': '14', fill: 'none',
     }));
 
-    // Línea visible
+    // Relación identificadora → línea continua
+    // Relación regular        → línea discontinua
     g.appendChild(svgEl('line', {
       x1: fromPort.x, y1: fromPort.y, x2: toPort.x, y2: toPort.y,
-      class: 'rel-line',
+      class: rel.identifying ? 'rel-line rel-line-identifying' : 'rel-line rel-line-regular',
     }));
 
     // Crow's Foot: anchor = port del otro extremo.
@@ -453,6 +567,8 @@ class App {
     this.panX = 0; this.panY = 0; this.scale = 1;
     this._isPanning = false; this._panStart = null; this._panOrigin = null;
     this._relFromEntity = null; this._relPreviewLine = null; this._editingRel = null;
+    this._spaceDown     = false; // true mientras Espacio está presionado
+    this._prevTool      = 'select'; // tool anterior al activar pan temporal
     this.svgCanvas     = document.getElementById('svg-canvas');
     this.diagRoot      = document.getElementById('diagram-root');
     this.canvasArea    = document.getElementById('canvas-area');
@@ -511,7 +627,7 @@ class App {
   _updateToolUI() {
     document.querySelectorAll('[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === this.currentTool));
     this.canvasArea.className = `canvas-area tool-${this.currentTool}`;
-    const names = { select: 'Seleccionar', entity: 'Agregar Entidad', relation: 'Agregar Relación', delete: 'Eliminar' };
+    const names = { select: 'Seleccionar', entity: 'Agregar Entidad', relation: 'Agregar Relación', delete: 'Eliminar', pan: 'Mover Entorno' };
     this.toolIndicator.textContent = names[this.currentTool] || this.currentTool;
   }
 
@@ -542,9 +658,18 @@ class App {
         }
       }
     });
-    this.canvasArea.addEventListener('mousedown', (e) => { if (e.button === 1) { this._startPan(e); e.preventDefault(); } });
+    this.canvasArea.addEventListener('mousedown', (e) => {
+      // Botón central siempre pan
+      if (e.button === 1) { this._startPan(e); e.preventDefault(); return; }
+      // Clic izquierdo en modo pan (tool o espacio)
+      if (e.button === 0 && (this.currentTool === 'pan' || this._spaceDown)) {
+        this._startPan(e); e.preventDefault();
+      }
+    });
     this.canvasArea.addEventListener('mousemove', (e) => { if (this._isPanning) this._doPan(e); if (this._relFromEntity) this._updateRelPreview(e); });
-    this.canvasArea.addEventListener('mouseup',   (e) => { if (e.button === 1) this._endPan(); });
+    this.canvasArea.addEventListener('mouseup',   (e) => {
+      if (e.button === 1 || e.button === 0) this._endPan();
+    });
     this.canvasArea.addEventListener('wheel', (e) => { e.preventDefault(); this._zoomAt(e.deltaY < 0 ? 1.1 : 0.9, e.clientX, e.clientY); }, { passive: false });
   }
 
@@ -566,6 +691,20 @@ class App {
   _bindKeyboard() {
     document.addEventListener('keydown', (e) => {
       if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+
+      // Espacio o H → pan temporal mientras está presionada
+      if ((e.code === 'Space' || e.key === 'h' || e.key === 'H') && !this._spaceDown) {
+        if (e.code === 'Space') e.preventDefault(); // evitar scroll de página
+        if (this.currentTool !== 'pan') {
+          this._spaceDown = true;
+          this._prevTool  = this.currentTool;
+          // Cambiar cursor sin cambiar el tool real
+          this.canvasArea.classList.add('tool-pan');
+          this.canvasArea.classList.remove(`tool-${this.currentTool}`);
+        }
+        return;
+      }
+
       switch (e.key) {
         case 'v': case 'V': this.setTool('select'); break;
         case 'e': case 'E': this.setTool('entity'); break;
@@ -575,6 +714,20 @@ class App {
           if (this.selectedType === 'relationship') this.deleteRelationship(this.selectedId);
           break;
         case 'Escape': this.setTool('select'); this.deselect(); this._cancelRelPreview(); break;
+      }
+    });
+
+    // Al soltar Espacio/H → restaurar tool anterior
+    document.addEventListener('keyup', (e) => {
+      if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+      if (e.code === 'Space' || e.key === 'h' || e.key === 'H') {
+        if (this._spaceDown) {
+          this._spaceDown = false;
+          this._endPan();
+          // Restaurar clase de cursor
+          this.canvasArea.classList.remove('tool-pan');
+          this.canvasArea.classList.add(`tool-${this._prevTool}`);
+        }
       }
     });
   }
@@ -660,6 +813,9 @@ class App {
     labelInp.value = relEdit ? (relEdit.label || '') : '';
     this._setCardSelection('card-from-group', relEdit ? relEdit.cardFrom : '1');
     this._setCardSelection('card-to-group',   relEdit ? relEdit.cardTo   : '0..N');
+    // Relación identificadora
+    const idCheck = document.getElementById('rel-identifying');
+    if (idCheck) idCheck.checked = relEdit ? (relEdit.identifying === true) : false;
     this._updateRelPreviewBar();
     modal.classList.remove('hidden');
     setTimeout(() => labelInp.focus(), 80);
@@ -695,16 +851,18 @@ class App {
     const fromId   = document.getElementById('rel-from').value;
     const toId     = document.getElementById('rel-to').value;
     const label    = document.getElementById('rel-label').value.trim();
-    const cardFrom = this._getCardSelection('card-from-group');
-    const cardTo   = this._getCardSelection('card-to-group');
+    const cardFrom     = this._getCardSelection('card-from-group');
+    const cardTo       = this._getCardSelection('card-to-group');
+    const identifying  = document.getElementById('rel-identifying')?.checked === true;
     if (!fromId || !toId) { alert('Selecciona las entidades'); return; }
     if (fromId === toId)  { alert('Las entidades deben ser distintas'); return; }
     if (this._editingRel) {
       this._editingRel.fromId = fromId; this._editingRel.toId = toId;
-      this._editingRel.cardFrom = cardFrom; this._editingRel.cardTo = cardTo; this._editingRel.label = label;
+      this._editingRel.cardFrom = cardFrom; this._editingRel.cardTo = cardTo;
+      this._editingRel.label = label; this._editingRel.identifying = identifying;
       this.renderAll();
     } else {
-      const rel = new Relationship(fromId, toId, cardFrom, cardTo, label);
+      const rel = new Relationship(fromId, toId, cardFrom, cardTo, label, identifying);
       this.diagram.addRelationship(rel);
       this._renderOneRelationship(rel);
     }
@@ -713,6 +871,48 @@ class App {
   }
 
   _closeRelModal() { document.getElementById('rel-modal').classList.add('hidden'); this._editingRel = null; }
+
+  /**
+   * Revisa si alguna entidad débil carece de relación identificadora
+   * y muestra una advertencia visual en su grupo SVG.
+   */
+  _checkWeakEntities() {
+    this.diagram.entities.forEach(entity => {
+      const gEl = this.diagRoot.querySelector(`[data-id="${entity.id}"]`);
+      if (!gEl) return;
+      // Eliminar advertencia previa
+      gEl.querySelectorAll('.entity-weak-warning').forEach(el => el.remove());
+      if (!entity.isWeak) return;
+      // Verificar si tiene al menos una relación identificadora
+      const hasIdentifying = this.diagram.relationships.some(
+        r => r.identifying && (r.fromId === entity.id || r.toId === entity.id)
+      );
+      if (!hasIdentifying) {
+        // Dibujar indicador de advertencia: triángulo naranja en esquina
+        const warn = svgEl('g', { class: 'entity-weak-warning' });
+        const W = entity.width;
+        const tri = svgEl('path', {
+          d: `M ${W-18} 2 L ${W-2} 2 L ${W-10} 16 Z`,
+          fill: 'var(--warn-color)', opacity: '0.9',
+        });
+        const wt = svgEl('text', {
+          x: W - 10, y: 10, 'dominant-baseline': 'middle', 'text-anchor': 'middle',
+          'font-size': '8', 'font-weight': '700', fill: '#000',
+        });
+        wt.textContent = '!';
+        // Tooltip también en el triángulo de advertencia
+        warn.style.cursor = 'help';
+        warn.addEventListener('mouseenter', (e) => {
+          SVGEntityRenderer._showWeakTooltip(e, entity, false);
+        });
+        warn.addEventListener('mousemove', SVGEntityRenderer._moveTooltip);
+        warn.addEventListener('mouseleave', SVGEntityRenderer._hideTooltip);
+
+        warn.appendChild(tri); warn.appendChild(wt);
+        gEl.appendChild(warn);
+      }
+    });
+  }
 
   selectElement(type, id) {
     this.deselect(); this.selectedId = id; this.selectedType = type;
@@ -901,6 +1101,8 @@ class App {
       this._attachEntityRelationListener(el, entity);
       this.diagRoot.appendChild(el);
     });
+    // Verificar advertencias de entidades débiles sin relación identificadora
+    this._checkWeakEntities();
   }
 
   _renderOneRelationship(rel) {
@@ -954,25 +1156,239 @@ class App {
 
   exportPNG() {
     if (!this.diagram.entities.length) { alert('No hay entidades para exportar'); return; }
-    const pad=60; let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
-    this.diagram.entities.forEach(e => { minX=Math.min(minX,e.x);minY=Math.min(minY,e.y);maxX=Math.max(maxX,e.x+e.width);maxY=Math.max(maxY,e.y+e.height); });
-    const W=maxX-minX+pad*2, H=maxY-minY+pad*2, SC=2;
-    const clone = this.svgCanvas.cloneNode(true);
-    clone.setAttribute('width', W*SC); clone.setAttribute('height', H*SC);
-    clone.querySelector('#diagram-root').setAttribute('transform', `translate(${(pad-minX)*SC},${(pad-minY)*SC}) scale(${SC})`);
-    const bg = svgEl('rect', { width:'100%', height:'100%', fill:'#0f1117' });
-    clone.insertBefore(bg, clone.firstChild);
-    const gridBg = clone.querySelector('#grid-bg'); if (gridBg) gridBg.setAttribute('fill','none');
-    const style = document.createElement('style');
-    style.textContent = `text{font-family:'JetBrains Mono',monospace}.entity-box{fill:#161b25;stroke:#3a4560;stroke-width:1.5}.entity-header{fill:#1d2433}.entity-title{font-size:13px;font-weight:600;fill:#e8ecf4}.rel-line{stroke:#4f9eff;stroke-width:1.8;fill:none;opacity:.85}.cf-mark{stroke:#4f9eff;stroke-width:1.8;fill:none}.cf-mark-dest{stroke:#a78bfa;stroke-width:1.8;fill:none}.rel-name-label{font-size:10px;fill:#8896b0}.attr-sep{stroke:#2a3347;stroke-width:.5}`;
-    clone.insertBefore(style, clone.firstChild);
-    const blob = new Blob([new XMLSerializer().serializeToString(clone)], {type:'image/svg+xml'});
-    const url = URL.createObjectURL(blob), img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas'); canvas.width=W*SC; canvas.height=H*SC;
-      canvas.getContext('2d').drawImage(img,0,0); URL.revokeObjectURL(url);
-      canvas.toBlob(png => this._download(URL.createObjectURL(png),'erflow-diagram.png',null,true),'image/png');
+
+    // ── Paleta de colores hardcodeada (independiente del CSS de la app) ──────
+    const C = {
+      bg:           '#0f1117',
+      entityBg:     '#161b25',
+      entityHead:   '#1d2433',
+      entityBorder: '#3a4560',
+      entityWeak:   '#7c6adb',   // borde doble entidad débil
+      sep:          '#2a3347',
+      fg:           '#e8ecf4',
+      fgMuted:      '#8896b0',
+      fgSubtle:     '#4e5c78',
+      accent:       '#4f9eff',   // relación origen / cardinalidad from
+      accent2:      '#a78bfa',   // relación destino / cardinalidad to
+      accentDim:    '#1e3a5f',
+      accent2Dim:   '#2d1f5e',
+      pkColor:      '#f6c90e',
+      pkBg:         '#2a2000',
+      fkColor:      '#a78bfa',
+      fkBg:         '#2d1f5e',
+      weakBadgeBg:  '#2d1f5e',
+      weakBadgeFg:  '#c4b5fd',
+      gridDot:      '#1a2030',
     };
+    const FONT = "'JetBrains Mono', 'Courier New', monospace";
+
+    // ── Bounding box del contenido ──────────────────────────────────────────
+    const pad = 60;
+    let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+    this.diagram.entities.forEach(e => {
+      minX=Math.min(minX,e.x); minY=Math.min(minY,e.y);
+      maxX=Math.max(maxX,e.x+e.width); maxY=Math.max(maxY,e.y+e.height);
+    });
+    const W = maxX - minX + pad*2;
+    const H = maxY - minY + pad*2;
+    const SC = 2; // escala para alta resolución
+
+    // ── Helpers SVG ─────────────────────────────────────────────────────────
+    const NS = 'http://www.w3.org/2000/svg';
+    const el = (tag, attrs={}, txt='') => {
+      const e = document.createElementNS(NS, tag);
+      for (const [k,v] of Object.entries(attrs)) e.setAttribute(k, v);
+      if (txt) e.textContent = txt;
+      return e;
+    };
+
+    // ── SVG raíz ─────────────────────────────────────────────────────────────
+    const svg = el('svg', {
+      xmlns: NS,
+      width:  W * SC,
+      height: H * SC,
+      viewBox: `0 0 ${W*SC} ${H*SC}`,
+    });
+
+    // Fondo
+    svg.appendChild(el('rect', { width:'100%', height:'100%', fill: C.bg }));
+
+    // Grilla de puntos decorativa
+    const defs = el('defs');
+    const pat  = el('pattern', { id:'exp-grid', x:0, y:0, width:24*SC, height:24*SC, patternUnits:'userSpaceOnUse' });
+    pat.appendChild(el('circle', { cx:1, cy:1, r:1, fill: C.gridDot }));
+    defs.appendChild(pat);
+    svg.appendChild(defs);
+    svg.appendChild(el('rect', { width:'100%', height:'100%', fill:'url(#exp-grid)', opacity:'0.6' }));
+
+    // Grupo principal (offset para centrar contenido)
+    const root = el('g', { transform: `translate(${(pad-minX)*SC}, ${(pad-minY)*SC}) scale(${SC})` });
+
+    // ── Renderizar relaciones (debajo de entidades) ──────────────────────────
+    this.diagram.relationships.forEach(rel => {
+      const fromEnt = this.diagram.getEntity(rel.fromId);
+      const toEnt   = this.diagram.getEntity(rel.toId);
+      if (!fromEnt || !toEnt) return;
+
+      const fromC = { x: fromEnt.x+fromEnt.width/2, y: fromEnt.y+fromEnt.height/2 };
+      const toC   = { x: toEnt.x+toEnt.width/2,     y: toEnt.y+toEnt.height/2     };
+      const fp    = fromEnt.getNearestPort(toC);
+      const tp    = toEnt.getNearestPort(fromC);
+
+      // Línea principal
+      const lineAttrs = {
+        x1: fp.x, y1: fp.y, x2: tp.x, y2: tp.y,
+        stroke: C.accent, 'stroke-width': '1.8', 'fill': 'none', opacity: '0.9',
+      };
+      if (!rel.identifying) lineAttrs['stroke-dasharray'] = '8 4';
+      root.appendChild(el('line', lineAttrs));
+
+      // Marcadores Crow's Foot (exportación directa con colores hardcodeados)
+      const drawCF = (type, port, anchor, color) => {
+        const angle = Math.atan2(port.y-anchor.y, port.x-anchor.x);
+        const dx=Math.cos(angle), dy=Math.sin(angle);
+        const TICK=7, CB=12, BAR=26, CIR=28;
+        const iw = d => ({ x: port.x-dx*d, y: port.y-dy*d });
+        const mkL = (x1,y1,x2,y2) => root.appendChild(el('line',{ x1,y1,x2,y2, stroke:color,'stroke-width':'1.8','stroke-linecap':'round' }));
+        const mkC = (cx,cy,r) => root.appendChild(el('circle',{ cx,cy,r, fill:'none', stroke:color,'stroke-width':'1.8' }));
+        const perp = (o,h) => ({ x1:o.x+(-dy)*h,y1:o.y+dx*h, x2:o.x-(-dy)*h,y2:o.y-dx*h });
+        if (type==='one') {
+          const p1=perp(iw(BAR-12),TICK); mkL(p1.x1,p1.y1,p1.x2,p1.y2);
+          const p2=perp(iw(BAR),TICK); mkL(p2.x1,p2.y1,p2.x2,p2.y2);
+        } else if (type==='zero_one') {
+          const pp=perp(iw(BAR-12),TICK); mkL(pp.x1,pp.y1,pp.x2,pp.y2);
+          const cp=iw(CIR); mkC(cp.x,cp.y,5);
+        } else if (type==='one_many') {
+          const tip=iw(CB);
+          mkL(port.x,port.y,tip.x,tip.y);
+          mkL(port.x+(-dy)*TICK,port.y+dx*TICK,tip.x,tip.y);
+          mkL(port.x-(-dy)*TICK,port.y-dx*TICK,tip.x,tip.y);
+          const pp=perp(iw(BAR),TICK); mkL(pp.x1,pp.y1,pp.x2,pp.y2);
+        } else if (type==='zero_many') {
+          const tip=iw(CB);
+          mkL(port.x,port.y,tip.x,tip.y);
+          mkL(port.x+(-dy)*TICK,port.y+dx*TICK,tip.x,tip.y);
+          mkL(port.x-(-dy)*TICK,port.y-dx*TICK,tip.x,tip.y);
+          const cp=iw(CIR); mkC(cp.x,cp.y,5);
+        }
+      };
+      drawCF(Relationship.cardToType(rel.cardFrom), fp, tp, C.accent);
+      drawCF(Relationship.cardToType(rel.cardTo),   tp, fp, C.accent2);
+
+      // Etiquetas de cardinalidad
+      const drawCard = (card, port, anchor, color) => {
+        const angle=Math.atan2(port.y-anchor.y, port.x-anchor.x);
+        const OFFSET=22, PERP=14;
+        const px=port.x-Math.cos(angle)*OFFSET, py=port.y-Math.sin(angle)*OFFSET;
+        const tx=px-Math.sin(angle)*PERP, ty=py+Math.cos(angle)*PERP;
+        root.appendChild(el('text',{ x:tx, y:ty, 'dominant-baseline':'middle','text-anchor':'middle',
+          'font-family':FONT,'font-size':'10','font-weight':'700', fill:color }, card));
+      };
+      drawCard(rel.cardFrom, fp, tp, C.accent);
+      drawCard(rel.cardTo,   tp, fp, C.accent2);
+
+      // Label de relación
+      if (rel.label) {
+        const mx=(fp.x+tp.x)/2, my=(fp.y+tp.y)/2;
+        root.appendChild(el('rect',{ x:mx-34,y:my-8,width:68,height:14,rx:3, fill:C.entityBg, opacity:'0.95' }));
+        root.appendChild(el('text',{ x:mx, y:my, 'dominant-baseline':'middle','text-anchor':'middle',
+          'font-family':FONT,'font-size':'9.5', fill:C.fgMuted }, rel.label));
+      }
+    });
+
+    // ── Renderizar entidades ─────────────────────────────────────────────────
+    this.diagram.entities.forEach(entity => {
+      const { x, y, width: W2, height: H2, headerH: HH, attrH: AH, footerH: FH } = entity;
+
+      // Sombra suave
+      root.appendChild(el('rect',{ x:x+3,y:y+4,width:W2,height:H2,rx:8, fill:'#000',opacity:'0.35' }));
+
+      // Caja principal
+      const borderColor = entity.isWeak ? C.entityWeak : C.entityBorder;
+      root.appendChild(el('rect',{ x,y,width:W2,height:H2,rx:8, fill:C.entityBg, stroke:borderColor,'stroke-width':'1.5' }));
+
+      // Doble borde entidad débil
+      if (entity.isWeak) {
+        const M=4;
+        root.appendChild(el('rect',{ x:x+M,y:y+M,width:W2-M*2,height:H2-M*2,rx:5,
+          fill:'none', stroke:C.entityWeak,'stroke-width':'1.2' }));
+      }
+
+      // Header
+      root.appendChild(el('rect',{ x,y,width:W2,height:HH,rx:8, fill:C.entityHead }));
+      root.appendChild(el('rect',{ x,y:y+HH/2,width:W2,height:HH/2, fill:C.entityHead }));
+
+      // Título
+      root.appendChild(el('text',{ x:x+W2/2, y:y+HH/2, 'dominant-baseline':'middle','text-anchor':'middle',
+        'font-family':FONT,'font-size':'13','font-weight':'600', fill:C.fg }, entity.name));
+
+      // Badge WEAK
+      if (entity.isWeak) {
+        root.appendChild(el('rect',{ x:x+W2-43,y:y+5,width:36,height:13,rx:3, fill:C.weakBadgeBg,stroke:C.entityWeak,'stroke-width':'1' }));
+        root.appendChild(el('text',{ x:x+W2-25, y:y+11,'dominant-baseline':'middle','text-anchor':'middle',
+          'font-family':FONT,'font-size':'8','font-weight':'700', fill:C.weakBadgeFg }, 'WEAK'));
+      }
+
+      // Separador header/body
+      root.appendChild(el('line',{ x1:x,y1:y+HH,x2:x+W2,y2:y+HH, stroke:C.sep,'stroke-width':'1' }));
+
+      // Atributos
+      entity.attributes.forEach((attr, i) => {
+        const ay = y + HH + i * AH;
+        // Separador entre atributos
+        if (i>0) root.appendChild(el('line',{ x1:x+8,y1:ay,x2:x+W2-8,y2:ay, stroke:C.sep,'stroke-width':'0.5' }));
+
+        let xOff = x + 10;
+
+        // Badge PK
+        if (attr.pk) {
+          root.appendChild(el('rect',{ x:xOff-1,y:ay+AH/2-7,width:22,height:13,rx:3, fill:C.pkBg }));
+          root.appendChild(el('text',{ x:xOff+10,y:ay+AH/2,'dominant-baseline':'middle','text-anchor':'middle',
+            'font-family':FONT,'font-size':'9','font-weight':'700', fill:C.pkColor }, 'PK'));
+          xOff += 26;
+        }
+        // Badge FK
+        if (attr.fk) {
+          root.appendChild(el('rect',{ x:xOff-1,y:ay+AH/2-7,width:22,height:13,rx:3, fill:C.fkBg }));
+          root.appendChild(el('text',{ x:xOff+10,y:ay+AH/2,'dominant-baseline':'middle','text-anchor':'middle',
+            'font-family':FONT,'font-size':'9','font-weight':'700', fill:C.fkColor }, 'FK'));
+          xOff += 26;
+        }
+
+        // Nombre del atributo
+        const nameColor = attr.pk ? C.pkColor : (attr.fk ? C.fkColor : C.fg);
+        const nameText  = attr.name + (attr.nn ? ' *' : '');
+        root.appendChild(el('text',{ x:xOff,y:ay+AH/2,'dominant-baseline':'middle',
+          'font-family':FONT,'font-size':'11.5', fill:nameColor }, nameText));
+
+        // Tipo de dato (derecha)
+        if (attr.typeLabel) {
+          root.appendChild(el('text',{ x:x+W2-8, y:ay+AH/2,'dominant-baseline':'middle','text-anchor':'end',
+            'font-family':FONT,'font-size':'10', fill:C.fgSubtle }, attr.typeLabel));
+        }
+      });
+
+      // Texto "+ Agregar atributo" (footer, tenue)
+      const footY = y + HH + entity.attributes.length * AH;
+      root.appendChild(el('text',{ x:x+W2/2, y:footY+FH/2, 'dominant-baseline':'middle','text-anchor':'middle',
+        'font-family':FONT,'font-size':'10', fill:C.fgSubtle, opacity:'0.5' }, '+ Agregar atributo'));
+    });
+
+    svg.appendChild(root);
+
+    // ── Serializar → Blob → Image → Canvas → PNG ────────────────────────────
+    const svgStr = new XMLSerializer().serializeToString(svg);
+    const blob   = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const url    = URL.createObjectURL(blob);
+    const img    = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = W*SC; canvas.height = H*SC;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(png => this._download(URL.createObjectURL(png), 'erflow-diagram.png', null, true), 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); alert('Error al generar PNG'); };
     img.src = url;
   }
 

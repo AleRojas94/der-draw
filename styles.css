@@ -275,6 +275,7 @@ html, body {
 .canvas-area.tool-relation { cursor: cell; }
 .canvas-area.tool-delete  { cursor: not-allowed; }
 .canvas-area.tool-select  { cursor: default; }
+.canvas-area.tool-pan     { cursor: grab; }
 .canvas-area.panning      { cursor: grabbing; }
 
 /* ===== HINT EN CANVAS ===== */
@@ -390,19 +391,7 @@ html, body {
 
 /* ===== RELACIONES (líneas) ===== */
 .rel-group { cursor: pointer; }
-.rel-line {
-  stroke: var(--rel-line);
-  stroke-width: 1.8;
-  fill: none;
-  opacity: 0.7;
-}
-.rel-line:hover { opacity: 1; stroke: var(--rel-line-hover); }
-
-.rel-group.selected .rel-line {
-  stroke: var(--accent2);
-  opacity: 1;
-  stroke-width: 2.2;
-}
+/* rel-line styles are defined in the LÍNEAS DE RELACIÓN section below */
 
 .rel-label {
   font-family: var(--font-mono);
@@ -1142,4 +1131,182 @@ html, body {
   background: var(--accent-dim);
   color: var(--accent);
   font-weight: 600;
+}
+
+/* ===== ENTIDAD DÉBIL ===== */
+:root {
+  --weak-entity-border: #a78bfa;
+  --weak-badge-bg:      #2d1f5e;
+  --weak-badge-border:  #a78bfa;
+  --weak-badge-color:   #c4b5fd;
+  --weak-btn-active:    #2d1f5e;
+  --warn-color:         #f59e0b;
+}
+
+/* Segundo rect interior que forma el doble borde */
+.entity-weak-inner {
+  fill: none;
+  stroke: var(--weak-entity-border);
+  stroke-width: 1.5;
+  stroke-dasharray: none;
+  pointer-events: none;
+}
+
+/* La caja exterior de una entidad débil cambia de color */
+.entity-group[data-weak="true"] .entity-box {
+  stroke: var(--weak-entity-border);
+}
+
+/* Badge WEAK en el header */
+.entity-weak-badge { pointer-events: none; }
+
+/* Botón toggle W en esquina del header */
+.entity-weak-toggle { opacity: 0.5; transition: opacity 0.15s; }
+.entity-group:hover .entity-weak-toggle { opacity: 1; }
+
+/* ===== LÍNEAS DE RELACIÓN ===== */
+
+/* Base: todos los rel-line comparten grosor y color */
+.rel-line {
+  stroke: var(--rel-line);
+  stroke-width: 1.8;
+  fill: none;
+  opacity: 0.85;
+}
+
+/* Relación regular: línea discontinua */
+.rel-line-regular {
+  stroke-dasharray: 8 4;
+}
+
+/* Relación identificadora: línea continua (sin dasharray) */
+.rel-line-identifying {
+  stroke-dasharray: none;
+}
+
+/* Estado seleccionado para ambos tipos */
+.rel-group.selected .rel-line {
+  stroke: var(--accent2);
+  stroke-width: 2.2;
+  opacity: 1;
+}
+
+/* ===== CHECKBOX RELACIÓN IDENTIFICADORA ===== */
+.rel-identifying-row {
+  padding: 4px 0 2px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+.rel-identifying-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--fg-muted);
+  user-select: none;
+  flex-wrap: wrap;
+}
+
+.rel-identifying-label input[type="checkbox"] {
+  display: none;
+}
+
+/* Custom checkbox */
+.rel-identifying-indicator {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--border2);
+  border-radius: 4px;
+  background: var(--bg3);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s;
+  position: relative;
+}
+
+.rel-identifying-label input:checked ~ .rel-identifying-indicator {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.rel-identifying-label input:checked ~ .rel-identifying-indicator::after {
+  content: '';
+  display: block;
+  width: 5px;
+  height: 8px;
+  border: 2px solid #fff;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+
+.rel-identifying-hint {
+  font-size: 10px;
+  color: var(--fg-subtle);
+  font-style: italic;
+  flex-basis: 100%;
+  padding-left: 24px;
+  margin-top: -4px;
+}
+
+/* ===== TOOLTIP ENTIDAD DÉBIL ===== */
+.weak-tooltip {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  background: var(--bg2);
+  border: 1.5px solid var(--weak-badge-border);
+  border-radius: 8px;
+  padding: 10px 13px;
+  max-width: 260px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+  animation: fadeIn 0.12s ease;
+}
+
+/* Variante advertencia: borde naranja */
+.weak-tooltip-warn {
+  border-color: var(--warn-color);
+}
+
+.wtt-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--weak-badge-color);
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+
+.weak-tooltip-warn .wtt-title {
+  color: var(--warn-color);
+}
+
+.wtt-body {
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  color: var(--fg-muted);
+  line-height: 1.55;
+}
+
+.wtt-body strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.wtt-body em {
+  color: var(--accent);
+  font-style: normal;
+  font-weight: 500;
+}
+
+.wtt-action {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--warn-color);
+  margin-top: 2px;
 }
