@@ -96,10 +96,12 @@ class Entity {
    CLASE: Relationship
 ───────────────────────────────────────────── */
 class Relationship {
-  constructor(fromId, toId, cardFrom = '1', cardTo = '0..N', label = '', identifying = false) {
+  constructor(fromId, toId, cardFrom = '1', cardTo = '0..N', label = '', identifying = false, roleFrom = '', roleTo = '') {
     this.id = uid(); this.fromId = fromId; this.toId = toId;
     this.cardFrom = cardFrom; this.cardTo = cardTo; this.label = label;
     this.identifying = identifying; // relación identificadora: doble línea
+    this.roleFrom = roleFrom; // rol del extremo origen (ej: 'gerente')
+    this.roleTo   = roleTo;   // rol del extremo destino (ej: 'empleado')
   }
   static cardToType(card) {
     const map = { '1': 'one', '0..1': 'zero_one', '1..N': 'one_many', '0..N': 'zero_many' };
@@ -108,7 +110,8 @@ class Relationship {
   toJSON() {
     return { id: this.id, fromId: this.fromId, toId: this.toId,
              cardFrom: this.cardFrom, cardTo: this.cardTo, label: this.label,
-             identifying: this.identifying };
+             identifying: this.identifying,
+             roleFrom: this.roleFrom || '', roleTo: this.roleTo || '' };
   }
   static fromJSON(d) {
     let cardFrom = d.cardFrom, cardTo = d.cardTo;
@@ -117,7 +120,7 @@ class Relationship {
       const lg = m[d.cardinality] || {f:'1',t:'0..N'};
       cardFrom = lg.f; cardTo = lg.t;
     }
-    const r = new Relationship(d.fromId, d.toId, cardFrom, cardTo, d.label || '', d.identifying === true);
+    const r = new Relationship(d.fromId, d.toId, cardFrom, cardTo, d.label || '', d.identifying === true, d.roleFrom || '', d.roleTo || '');
     r.id = d.id; return r;
   }
 }
@@ -492,6 +495,12 @@ class SVGRelationRenderer {
   static update(g, rel, fromEnt, toEnt) {
     while (g.firstChild) g.removeChild(g.firstChild);
 
+    // Relación autoreferenciada (misma entidad en ambos extremos)
+    if (rel.fromId === rel.toId) {
+      SVGRelationRenderer._updateSelfRef(g, rel, fromEnt);
+      return;
+    }
+
     const fromCenter = { x: fromEnt.x + fromEnt.width/2,  y: fromEnt.y + fromEnt.height/2 };
     const toCenter   = { x: toEnt.x   + toEnt.width/2,    y: toEnt.y   + toEnt.height/2   };
     const fromPort   = fromEnt.getNearestPort(toCenter);
@@ -538,6 +547,10 @@ class SVGRelationRenderer {
       lbl.textContent = rel.label;
       g.appendChild(lbl);
     }
+
+    // Roles en los extremos de la relación normal
+    SVGRelationRenderer._roleLabel(g, rel.roleFrom, fromPort, fromPort.side);
+    SVGRelationRenderer._roleLabel(g, rel.roleTo,   toPort,   toPort.side);
   }
 
   static _cardLabel(g, card, port, anchor, isDest) {
@@ -551,6 +564,163 @@ class SVGRelationRenderer {
       'font-family': 'JetBrains Mono, monospace', 'font-size': '10', 'font-weight': '700',
       fill: isDest ? 'var(--accent2)' : 'var(--accent)' });
     lbl.textContent = card;
+    g.appendChild(lbl);
+  }
+
+  /**
+   * Versión de _cardLabel para relaciones autoreferenciadas.
+   * Posiciona el texto en coordenadas absolutas fijas (sin trigonometría),
+   * evitando que los ángulos de 0°/90° empujen el texto fuera de la vista.
+   */
+  static _selfRefCardLabel(g, card, x, y, isDest) {
+    const lbl = svgEl('text', {
+      x, y,
+      'dominant-baseline': 'middle', 'text-anchor': 'middle',
+      'font-family': 'JetBrains Mono, monospace', 'font-size': '10', 'font-weight': '700',
+      fill: isDest ? 'var(--accent2)' : 'var(--accent)',
+    });
+    lbl.textContent = card;
+    g.appendChild(lbl);
+  }
+
+
+  /**
+   * Dibuja una relación autoreferenciada con segmentos ORTOGONALES (rectos).
+   *
+   * Geometría del lazo en la esquina inferior-derecha:
+   *
+   *   portBottom (x: cx, y: ey+H)        portRight (x: ex+W, y: cy)
+   *        │                                    │
+   *        ▼                                    ▲
+   *   (cx, ey+H+GAP) ──── (ex+W+GAP, ey+H+GAP) ──── (ex+W+GAP, cy)
+   *
+   * El lazo sale hacia abajo desde el borde inferior (portBottom),
+   * baja GAP píxeles, va horizontal hacia la derecha hasta pasar el borde
+   * derecho, sube hasta la altura del portRight, y entra a la entidad.
+   * Resultado: un rectángulo externo en la esquina inferior-derecha.
+   *
+   * Los Crow's Foot se dibujan exactamente igual que en relaciones normales,
+   * con el anchor siendo el siguiente punto de la polilínea.
+   */
+  static _updateSelfRef(g, rel, entity) {
+    const { x: ex, y: ey, width: W, height: H } = entity;
+    const GAP = 36; // distancia entre la entidad y el lazo externo
+
+    // ── Puertos de conexión ───────────────────────────────────────────────
+    // portBottom: sale hacia abajo — centro del borde inferior
+    // portRight:  entra desde la derecha — centro del borde derecho
+    const cx = ex + W / 2;
+    const cy = ey + H / 2;
+
+    const portBottom = { x: cx,      y: ey + H, side: 'bottom' };
+    const portRight  = { x: ex + W,  y: cy,     side: 'right'  };
+
+    // ── Vértices del lazo ortogonal ───────────────────────────────────────
+    // Sentido del recorrido: portBottom → A → B → portRight
+    const A = { x: cx,          y: ey + H + GAP };  // bajo el borde inferior
+    const B = { x: ex + W + GAP, y: ey + H + GAP }; // esquina inferior-derecha exterior
+    const C = { x: ex + W + GAP, y: cy            }; // altura del portRight
+
+    // Polilínea completa: portBottom → A → B → C → portRight
+    const points = [portBottom, A, B, C, portRight]
+      .map(p => `${p.x},${p.y}`)
+      .join(' ');
+
+    // ── Área de clic invisible ────────────────────────────────────────────
+    g.appendChild(svgEl('polyline', {
+      points, fill: 'none', stroke: 'transparent', 'stroke-width': '14',
+    }));
+
+    // ── Línea visible (continua o discontinua según identifying) ──────────
+    g.appendChild(svgEl('polyline', {
+      points,
+      class: rel.identifying ? 'rel-line rel-line-identifying' : 'rel-line rel-line-regular',
+      fill: 'none',
+    }));
+
+    // ── Crow's Foot con anchors ortogonales ───────────────────────────────
+    //
+    // Convención de draw(): angle = atan2(port - anchor)
+    // → anchor debe estar en la dirección DE DONDE VIENE la línea (no hacia donde va).
+    //
+    // portBottom: la línea sale hacia ABAJO (hacia A).
+    //   Para que angle apunte hacia arriba (hacia la entidad), anchor debe estar
+    //   DEBAJO del port → usamos A, que es el primer vértice de la polilínea.
+    const anchorBottom = A;   // { x: cx, y: ey+H+GAP } — está debajo de portBottom
+
+    // portRight: la línea llega desde la DERECHA (viene de C horizontalmente).
+    //   Para que angle apunte hacia la izquierda (hacia la entidad), anchor debe estar
+    //   A LA DERECHA del port → usamos C, que es el último vértice antes de portRight.
+    const anchorRight = C;    // { x: ex+W+GAP, y: cy } — está a la derecha de portRight
+
+    CrowsFootRenderer.draw(g, Relationship.cardToType(rel.cardFrom), portBottom, anchorBottom, 'cf-mark');
+    CrowsFootRenderer.draw(g, Relationship.cardToType(rel.cardTo),   portRight,  anchorRight,  'cf-mark-dest');
+
+    // ── Etiquetas de cardinalidad con posicionamiento ortogonal fijo ─────────
+    // _cardLabel usa trigonometría genérica que no funciona bien para ángulos
+    // puramente verticales/horizontales en un lazo. Usamos posiciones fijas
+    // basadas en la geometría conocida del lazo.
+    //
+    // portBottom: la línea baja verticalmente → cardinalidad a la IZQUIERDA del port
+    SVGRelationRenderer._selfRefCardLabel(g, rel.cardFrom,
+      portBottom.x - 18, portBottom.y + 14,   // izquierda-abajo del portBottom
+      false
+    );
+    // portRight: la línea va horizontalmente hacia la derecha → cardinalidad ARRIBA del port
+    SVGRelationRenderer._selfRefCardLabel(g, rel.cardTo,
+      portRight.x + 14,  portRight.y - 14,    // derecha-arriba del portRight
+      true
+    );
+
+    // ── Nombre de la relación en el centro visual del lazo ────────────────
+    // Centro del segmento horizontal inferior A–B
+    const labelX = (A.x + B.x) / 2;
+    const labelY = A.y + 12; // debajo del segmento inferior
+    if (rel.label) {
+      const lw = Math.max(rel.label.length * 6.5, 52);
+      g.appendChild(svgEl('rect', {
+        x: labelX - lw/2, y: labelY - 8, width: lw, height: 15, rx: 3,
+        fill: 'var(--bg2)', opacity: '0.95',
+      }));
+      const lbl = svgEl('text', {
+        class: 'rel-name-label', x: labelX, y: labelY,
+        'font-family': 'JetBrains Mono, monospace', 'font-size': '10',
+      });
+      lbl.textContent = rel.label;
+      g.appendChild(lbl);
+    }
+
+    // ── Roles ─────────────────────────────────────────────────────────────
+    // roleFrom junto al portBottom (lado izquierdo del segmento inferior)
+    // roleTo   junto al portRight  (parte superior del segmento vertical derecho)
+    SVGRelationRenderer._roleLabel(g, rel.roleFrom, portBottom, 'bottom');
+    SVGRelationRenderer._roleLabel(g, rel.roleTo,   portRight,  'right');
+  }
+
+  /**
+   * Dibuja los roles en relaciones regulares (en los extremos de la línea)
+   * y en autoreferenciadas (llamado desde _updateSelfRef).
+   */
+  static _roleLabel(g, role, port, side) {
+    if (!role) return;
+    // Offset para separar el rol de la línea, según el lado
+    const offsets = {
+      right:  { dx:  8, dy: -14 },
+      left:   { dx: -8, dy: -14 },
+      bottom: { dx: 14, dy:  12 },
+      top:    { dx: 14, dy: -12 },
+    };
+    const off = offsets[side] || { dx: 8, dy: -14 };
+    const lbl = svgEl('text', {
+      x: port.x + off.dx, y: port.y + off.dy,
+      'dominant-baseline': 'middle',
+      'text-anchor': side === 'right' ? 'start' : (side === 'left' ? 'end' : 'middle'),
+      'font-family': 'JetBrains Mono, monospace',
+      'font-size': '9',
+      'font-style': 'italic',
+      fill: 'var(--fg-subtle)',
+    });
+    lbl.textContent = '«' + role + '»';
     g.appendChild(lbl);
   }
 
@@ -747,7 +917,8 @@ class App {
 
   startRelationFrom(entity, mouseEvent) {
     if (this._relFromEntity) {
-      if (entity.id !== this._relFromEntity.id) this._completeRelation(entity);
+      // Segundo clic: misma entidad = autoref, diferente = relación normal
+      this._completeRelation(entity);
       return;
     }
     this._relFromEntity = entity;
@@ -774,7 +945,7 @@ class App {
     if (!this._relFromEntity) return;
     const fromEntity = this._relFromEntity;
     this._cancelRelPreview();
-    if (fromEntity.id === toEntity.id) { this._showHint('Selecciona una entidad diferente como destino'); return; }
+    // Permitir autoref: fromId === toId es válido (relación recursiva)
     this._editingRel = null;
     this.openRelModal(fromEntity.id, toEntity.id, null);
   }
@@ -793,8 +964,8 @@ class App {
         btn.classList.add('selected'); this._updateRelPreviewBar();
       });
     });
-    document.getElementById('rel-from').addEventListener('change', () => this._updateRelPreviewBar());
-    document.getElementById('rel-to').addEventListener('change',   () => this._updateRelPreviewBar());
+    document.getElementById('rel-from').addEventListener('change', () => { this._updateRelPreviewBar(); this._updateRolesSection(); });
+    document.getElementById('rel-to').addEventListener('change',   () => { this._updateRelPreviewBar(); this._updateRolesSection(); });
     document.getElementById('rel-label').addEventListener('input', () => this._updateRelPreviewBar());
     document.getElementById('rel-modal-confirm').addEventListener('click', () => this._confirmRelModal());
   }
@@ -816,7 +987,13 @@ class App {
     // Relación identificadora
     const idCheck = document.getElementById('rel-identifying');
     if (idCheck) idCheck.checked = relEdit ? (relEdit.identifying === true) : false;
+
+    // Roles
+    document.getElementById('rel-role-from').value = relEdit ? (relEdit.roleFrom || '') : '';
+    document.getElementById('rel-role-to').value   = relEdit ? (relEdit.roleTo   || '') : '';
+
     this._updateRelPreviewBar();
+    this._updateRolesSection();
     modal.classList.remove('hidden');
     setTimeout(() => labelInp.focus(), 80);
   }
@@ -845,6 +1022,22 @@ class App {
     document.getElementById('rpb-to-card').textContent       = cardTo;
     document.getElementById('rpb-label-preview').textContent = label;
     document.getElementById('rpb-to-card').className         = 'rpb-card dest';
+
+    // Indicador visual de autoref en el preview
+    const previewBar = document.getElementById('rel-preview-bar');
+    if (previewBar) previewBar.classList.toggle('autoref', fromId === toId);
+  }
+
+  /** Actualiza los labels de roles según si es autoref o normal */
+  _updateRolesSection() {
+    const fromId = document.getElementById('rel-from').value;
+    const toId   = document.getElementById('rel-to').value;
+    const isAutoref = fromId === toId;
+    const fromEnt   = this.diagram.getEntity(fromId);
+    const fromLabel = document.getElementById('role-from-label');
+    const toLabel   = document.getElementById('role-to-label');
+    if (fromLabel) fromLabel.textContent = isAutoref ? `Rol origen (${fromEnt?.name || ''})` : 'Rol origen';
+    if (toLabel)   toLabel.textContent   = isAutoref ? `Rol destino (${fromEnt?.name || ''})` : 'Rol destino';
   }
 
   _confirmRelModal() {
@@ -854,15 +1047,17 @@ class App {
     const cardFrom     = this._getCardSelection('card-from-group');
     const cardTo       = this._getCardSelection('card-to-group');
     const identifying  = document.getElementById('rel-identifying')?.checked === true;
+    const roleFrom     = document.getElementById('rel-role-from')?.value.trim() || '';
+    const roleTo       = document.getElementById('rel-role-to')?.value.trim()   || '';
     if (!fromId || !toId) { alert('Selecciona las entidades'); return; }
-    if (fromId === toId)  { alert('Las entidades deben ser distintas'); return; }
     if (this._editingRel) {
       this._editingRel.fromId = fromId; this._editingRel.toId = toId;
       this._editingRel.cardFrom = cardFrom; this._editingRel.cardTo = cardTo;
       this._editingRel.label = label; this._editingRel.identifying = identifying;
+      this._editingRel.roleFrom = roleFrom; this._editingRel.roleTo = roleTo;
       this.renderAll();
     } else {
-      const rel = new Relationship(fromId, toId, cardFrom, cardTo, label, identifying);
+      const rel = new Relationship(fromId, toId, cardFrom, cardTo, label, identifying, roleFrom, roleTo);
       this.diagram.addRelationship(rel);
       this._renderOneRelationship(rel);
     }

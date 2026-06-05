@@ -1310,3 +1310,71 @@ html, body {
   color: var(--warn-color);
   margin-top: 2px;
 }
+
+/* ===== RELACIONES AUTOREFERENCIADAS ===== */
+
+/* Preview bar en modo autoref */
+.rel-preview-bar.autoref {
+  border-color: var(--accent2);
+  background: var(--accent2-dim);
+}
+
+.rel-preview-bar.autoref::before {
+  content: '↩ Autoreferenciada';
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--accent2);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  display: block;
+  width: 100%;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+/* ===== ROLES DE RELACIÓN ===== */
+.rel-roles-row {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  margin-top: 2px;
+}
+
+.rel-roles-hint {
+  font-size: 10px;
+  color: var(--fg-subtle);
+  font-weight: 400;
+  font-style: italic;
+}
+
+.rel-roles-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.rel-role-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.rel-role-side-label {
+  font-size: 10px;
+  color: var(--fg-subtle);
+  font-family: var(--font-mono);
+}
+
+.rel-role-input {
+  font-family: var(--font-mono) !important;
+  font-size: 12px !important;
+  font-style: italic;
+}
+
+.rel-role-sep {
+  font-size: 16px;
+  color: var(--fg-subtle);
+  padding-top: 18px;
+  flex-shrink: 0;
+}

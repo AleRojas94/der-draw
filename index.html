@@ -258,6 +258,22 @@
           </label>
         </div>
 
+        <!-- Roles (autoreferenciadas y regulares) -->
+        <div class="form-group rel-roles-row" id="rel-roles-section">
+          <label>Roles <span class="rel-roles-hint">(opcional — indica el significado de cada extremo)</span></label>
+          <div class="rel-roles-inputs">
+            <div class="rel-role-col">
+              <span class="rel-role-side-label" id="role-from-label">Rol origen</span>
+              <input type="text" id="rel-role-from" placeholder="ej: gerente" class="input-field rel-role-input"/>
+            </div>
+            <div class="rel-role-sep">→</div>
+            <div class="rel-role-col">
+              <span class="rel-role-side-label" id="role-to-label">Rol destino</span>
+              <input type="text" id="rel-role-to" placeholder="ej: empleado" class="input-field rel-role-input"/>
+            </div>
+          </div>
+        </div>
+
       </div>
       <div class="modal-footer">
         <button class="btn-cancel" id="rel-modal-cancel">Cancelar</button>
