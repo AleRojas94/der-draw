@@ -1,7 +1,8 @@
 /**
  * ERFlow — Herramienta de Diagramas Entidad-Relación (Crow's Foot)
  * Versión 2 — Relaciones reales con cardinalidades independientes por extremo.
- */
+ * Versión estable
+ * /
 
 /* ─────────────────────────────────────────────
    UTILIDADES
