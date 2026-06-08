@@ -74,10 +74,6 @@
         <svg viewBox="0 0 20 20"><rect x="1" y="6" width="7" height="8" rx="1.5" stroke="currentColor" stroke-width="1.4" fill="none"/><rect x="12" y="6" width="7" height="8" rx="1.5" stroke="currentColor" stroke-width="1.4" fill="none"/><line x1="8" y1="10" x2="12" y2="10" stroke="currentColor" stroke-width="1.4"/></svg>
         Agregar Relación
       </button>
-      <button class="tool-btn" id="tool-generalization" data-tool="generalization" title="Agregar Generalización (G)">
-        <svg viewBox="0 0 20 20"><rect x="6" y="1" width="8" height="6" rx="1.5" stroke="currentColor" stroke-width="1.4" fill="none"/><line x1="10" y1="7" x2="10" y2="10" stroke="currentColor" stroke-width="1.4"/><line x1="3" y1="10" x2="17" y2="10" stroke="currentColor" stroke-width="1.4"/><line x1="5" y1="10" x2="5" y2="13" stroke="currentColor" stroke-width="1.4"/><line x1="15" y1="10" x2="15" y2="13" stroke="currentColor" stroke-width="1.4"/><rect x="1" y="13" width="8" height="6" rx="1.5" stroke="currentColor" stroke-width="1.4" fill="none"/><rect x="11" y="13" width="8" height="6" rx="1.5" stroke="currentColor" stroke-width="1.4" fill="none"/></svg>
-        Agregar Jerarquía
-      </button>
       <button class="tool-btn danger" id="tool-delete" data-tool="delete" title="Eliminar (Del)">
         <svg viewBox="0 0 20 20"><path d="M5 6h10l-1 10H6L5 6z" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/><path d="M3 6h14M8 6V4h4v2" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>
         Eliminar
@@ -286,64 +282,9 @@
     </div>
   </div>
 
-  <!-- ===== MODAL DE GENERALIZACIÓN ===== -->
-  <div class="modal-overlay hidden" id="gen-modal">
-    <div class="modal modal-wide">
-      <div class="modal-header">
-        <h3 id="gen-modal-title">Nueva Jerarquía de Generalización</h3>
-        <button class="modal-close" id="gen-modal-close">✕</button>
-      </div>
-      <div class="modal-body">
-
-        <!-- Preview notación Mannino -->
-        <div class="gen-preview" id="gen-preview">
-          <div class="gen-preview-super" id="gen-preview-super">—</div>
-          <div class="gen-preview-arrow">↑</div>
-          <div class="gen-preview-constraint" id="gen-preview-constraint"></div>
-          <div class="gen-preview-hbar">───────────</div>
-          <div class="gen-preview-subs" id="gen-preview-subs"></div>
-        </div>
-
-        <!-- Supertipo -->
-        <div class="form-group">
-          <label>Supertipo (entidad padre)</label>
-          <select id="gen-supertype"></select>
-        </div>
-
-        <!-- Subtipos -->
-        <div class="form-group">
-          <label>Subtipos <span style="color:var(--fg-subtle);font-weight:400">(seleccioná uno o más)</span></label>
-          <div class="gen-subtypes-list" id="gen-subtypes-list"></div>
-        </div>
-
-        <!-- Restricciones -->
-        <div class="form-group gen-constraints-row">
-          <label>Restricciones</label>
-          <div class="gen-constraint-checks">
-            <label class="rel-identifying-label">
-              <input type="checkbox" id="gen-disjoint" />
-              <span class="rel-identifying-indicator"></span>
-              <strong>D</strong> — Disjoint <span class="rel-identifying-hint">Los subtipos no se solapan entre sí</span>
-            </label>
-            <label class="rel-identifying-label" style="margin-top:6px">
-              <input type="checkbox" id="gen-complete" />
-              <span class="rel-identifying-indicator"></span>
-              <strong>C</strong> — Complete <span class="rel-identifying-hint">Los subtipos cubren todo el supertipo</span>
-            </label>
-          </div>
-        </div>
-
-      </div>
-      <div class="modal-footer">
-        <button class="btn-cancel" id="gen-modal-cancel">Cancelar</button>
-        <button class="btn-confirm" id="gen-modal-confirm">Crear Jerarquía</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Input oculto para cargar JSON -->
   <input type="file" id="file-input" accept=".json" style="display:none"/>
 
-  <script type="module" src="main.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
