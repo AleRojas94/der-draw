@@ -21,7 +21,6 @@ export class SVGRelationRenderer {
   static update(g, rel, fromEnt, toEnt, fromPort = null, toPort = null) {
     while (g.firstChild) g.removeChild(g.firstChild);
 
-    // Relación autoreferenciada (misma entidad en ambos extremos)
     if (rel.fromId === rel.toId) {
       SVGRelationRenderer._updateSelfRef(g, rel, fromEnt);
       return;
@@ -29,30 +28,42 @@ export class SVGRelationRenderer {
 
     const fromCenter = { x: fromEnt.x + fromEnt.width/2,  y: fromEnt.y + fromEnt.height/2 };
     const toCenter   = { x: toEnt.x   + toEnt.width/2,    y: toEnt.y   + toEnt.height/2   };
-    // Usar ports pre-calculados (con offset) si se proporcionan, sino calcular normalmente
     fromPort = fromPort || fromEnt.getNearestPort(toCenter);
     toPort   = toPort   || toEnt.getNearestPort(fromCenter);
 
+    // ── Path ortogonal en L ───────────────────────────────────────────────
+    // Sale perpendicular al borde de la entidad origen, hace un codo,
+    // y llega perpendicular al borde de la entidad destino.
+    // Esto garantiza que los marcadores Crow's Foot siempre queden alineados
+    // con el borde independientemente del ángulo entre entidades.
+    const path = SVGRelationRenderer._orthogonalPath(fromPort, toPort);
+
     // Área de clic invisible
-    g.appendChild(svgEl('line', {
-      x1: fromPort.x, y1: fromPort.y, x2: toPort.x, y2: toPort.y,
-      stroke: 'transparent', 'stroke-width': '14', fill: 'none',
+    g.appendChild(svgEl('path', {
+      d: path, fill: 'none', stroke: 'transparent', 'stroke-width': '14',
     }));
 
-    // Línea visible (continua = identificadora, discontinua = regular)
-    g.appendChild(svgEl('line', {
-      x1: fromPort.x, y1: fromPort.y, x2: toPort.x, y2: toPort.y,
+    // Línea visible
+    g.appendChild(svgEl('path', {
+      d: path,
       class: rel.identifying ? 'rel-line rel-line-identifying' : 'rel-line rel-line-regular',
     }));
 
-    CrowsFootRenderer.draw(g, Relationship.cardToType(rel.cardFrom), fromPort, toPort,   'cf-mark');
-    CrowsFootRenderer.draw(g, Relationship.cardToType(rel.cardTo),   toPort,   fromPort, 'cf-mark-dest');
+    // ── Anchors fijos perpendiculares al borde ────────────────────────────
+    // En vez de usar el port opuesto como anchor (que cambia según la diagonal),
+    // usamos un punto a 30px afuera del port siguiendo la dirección del lado.
+    // Esto hace que el ángulo del marcador sea siempre 0°/90°/180°/270°.
+    const anchorFrom = SVGRelationRenderer._sideAnchor(fromPort);
+    const anchorTo   = SVGRelationRenderer._sideAnchor(toPort);
 
-    SVGRelationRenderer._cardLabel(g, rel.cardFrom, fromPort, toPort,   false);
-    SVGRelationRenderer._cardLabel(g, rel.cardTo,   toPort,   fromPort, true);
+    CrowsFootRenderer.draw(g, Relationship.cardToType(rel.cardFrom), fromPort, anchorFrom, 'cf-mark');
+    CrowsFootRenderer.draw(g, Relationship.cardToType(rel.cardTo),   toPort,   anchorTo,   'cf-mark-dest');
+
+    SVGRelationRenderer._cardLabel(g, rel.cardFrom, fromPort, anchorFrom, false);
+    SVGRelationRenderer._cardLabel(g, rel.cardTo,   toPort,   anchorTo,   true);
 
     if (rel.label) {
-      const mid = { x: (fromPort.x + toPort.x) / 2, y: (fromPort.y + toPort.y) / 2 };
+      const mid = SVGRelationRenderer._pathMidpoint(fromPort, toPort);
       g.appendChild(svgEl('rect', {
         x: mid.x - 36, y: mid.y - 9, width: 72, height: 16, rx: 4,
         fill: 'var(--bg2)', opacity: '0.92',
@@ -65,6 +76,66 @@ export class SVGRelationRenderer {
 
     SVGRelationRenderer._roleLabel(g, rel.roleFrom, fromPort, fromPort.side);
     SVGRelationRenderer._roleLabel(g, rel.roleTo,   toPort,   toPort.side);
+  }
+
+  /**
+   * Genera un anchor a 30px fuera del port, en la dirección perpendicular
+   * al lado de la entidad. Esto fija el ángulo del marcador independientemente
+   * de dónde esté la otra entidad.
+   */
+  static _sideAnchor(port) {
+    const DIST = 30;
+    const offsets = {
+      right:  { dx:  DIST, dy: 0     },
+      left:   { dx: -DIST, dy: 0     },
+      bottom: { dx: 0,     dy:  DIST },
+      top:    { dx: 0,     dy: -DIST },
+    };
+    const off = offsets[port.side] || { dx: DIST, dy: 0 };
+    return { x: port.x + off.dx, y: port.y + off.dy };
+  }
+
+  /**
+   * Construye un path SVG ortogonal (en L o Z) entre dos ports.
+   * Sale perpendicular al borde de cada entidad y se dobla en el medio.
+   */
+  static _orthogonalPath(from, to) {
+    const fx = from.x, fy = from.y;
+    const tx = to.x,   ty = to.y;
+
+    // Punto de codo: a mitad de camino entre los dos ports
+    let mx, my;
+
+    // Si salen del mismo eje (ambos left/right o ambos top/bottom):
+    // el codo va a la mitad del eje compartido
+    const fromH = from.side === 'left' || from.side === 'right'; // horizontal
+    const toH   = to.side   === 'left' || to.side   === 'right';
+
+    if (fromH && toH) {
+      // Ambos horizontales → codo vertical en X media
+      mx = (fx + tx) / 2;
+      return `M ${fx} ${fy} L ${mx} ${fy} L ${mx} ${ty} L ${tx} ${ty}`;
+    } else if (!fromH && !toH) {
+      // Ambos verticales → codo horizontal en Y media
+      my = (fy + ty) / 2;
+      return `M ${fx} ${fy} L ${fx} ${my} L ${tx} ${my} L ${tx} ${ty}`;
+    } else if (fromH && !toH) {
+      // From horizontal, to vertical → L simple
+      return `M ${fx} ${fy} L ${tx} ${fy} L ${tx} ${ty}`;
+    } else {
+      // From vertical, to horizontal → L simple
+      return `M ${fx} ${fy} L ${fx} ${ty} L ${tx} ${ty}`;
+    }
+  }
+
+  /**
+   * Punto medio visual del path ortogonal (para el label).
+   */
+  static _pathMidpoint(from, to) {
+    return {
+      x: (from.x + to.x) / 2,
+      y: (from.y + to.y) / 2,
+    };
   }
 
   static _cardLabel(g, card, port, anchor, isDest) {
