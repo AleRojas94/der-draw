@@ -47,6 +47,11 @@
         <svg viewBox="0 0 16 16"><path d="M6 3C4.5 3 3.5 4 3.5 5v2c0 .8-.5 1-.5 1s.5.2.5 1v2c0 1 1 2 2.5 2M10 3c1.5 0 2.5 1 2.5 2v2c0 .8.5 1 .5 1s-.5.2-.5 1v2c0 1-1 2-2.5 2" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg>
         JSON
       </button>
+      <div class="divider-v"></div>
+      <button class="btn-top btn-help" id="btn-tutorial" title="Tutorial y ayuda">
+        <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M6 6.5C6 5.4 6.9 4.5 8 4.5s2 .9 2 2c0 .8-.5 1.3-1 1.7C8.5 8.6 8 9.1 8 9.8" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/><circle cx="8" cy="11.5" r=".7" fill="currentColor"/></svg>
+        Ayuda
+      </button>
     </div>
 
     <div class="topbar-info">
@@ -338,6 +343,244 @@
         <button class="btn-cancel" id="gen-modal-cancel">Cancelar</button>
         <button class="btn-confirm" id="gen-modal-confirm">Crear Jerarquía</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL DE TUTORIAL ===== -->
+  <div class="modal-overlay hidden" id="tutorial-modal">
+    <div class="modal modal-tutorial">
+      <div class="modal-header">
+        <div class="tutorial-header-brand">
+          <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
+            <rect x="1" y="1" width="8" height="6" rx="1.5" stroke="var(--accent)" stroke-width="1.5"/>
+            <rect x="13" y="1" width="8" height="6" rx="1.5" stroke="var(--accent2)" stroke-width="1.5"/>
+            <rect x="1" y="15" width="8" height="6" rx="1.5" stroke="var(--accent2)" stroke-width="1.5"/>
+            <rect x="13" y="15" width="8" height="6" rx="1.5" stroke="var(--accent)" stroke-width="1.5"/>
+          </svg>
+          <h3>TGD-ER — Guía de uso</h3>
+        </div>
+        <button class="modal-close" id="tutorial-modal-close">✕</button>
+      </div>
+
+      <!-- Tabs de navegación -->
+      <div class="tutorial-tabs">
+        <button class="tut-tab active" data-tab="overview">Resumen</button>
+        <button class="tut-tab" data-tab="entities">Entidades</button>
+        <button class="tut-tab" data-tab="relations">Relaciones</button>
+        <button class="tut-tab" data-tab="generalization">Jerarquías</button>
+        <button class="tut-tab" data-tab="tips">Atajos</button>
+      </div>
+
+      <div class="tutorial-body">
+
+        <!-- ── Tab: Resumen ── -->
+        <div class="tut-panel active" id="tab-overview">
+          <p class="tut-intro">TGD-ER es una herramienta para crear <strong>Diagramas Entidad-Relación</strong> usando la notación <strong>Crow's Foot</strong> y la notación de <strong>Mannino</strong>.</p>
+          <div class="tut-grid">
+            <div class="tut-card">
+              <div class="tut-card-icon">🗂</div>
+              <div class="tut-card-title">Entidades</div>
+              <div class="tut-card-desc">Representan tablas o conceptos del dominio. Pueden ser normales o <strong>débiles</strong>. Tienen atributos con tipos de dato y restricciones.</div>
+            </div>
+            <div class="tut-card">
+              <div class="tut-card-icon">↔</div>
+              <div class="tut-card-title">Relaciones</div>
+              <div class="tut-card-desc">Conectan entidades con cardinalidades Crow's Foot. Pueden ser regulares (discontinuas) o identificadoras (continuas).</div>
+            </div>
+            <div class="tut-card">
+              <div class="tut-card-icon">↑</div>
+              <div class="tut-card-title">Jerarquías</div>
+              <div class="tut-card-desc">Generalización estilo Mannino con supertipo arriba y subtipos abajo. Soporta restricciones <strong>D</strong> (disjoint) y <strong>C</strong> (complete).</div>
+            </div>
+            <div class="tut-card">
+              <div class="tut-card-icon">↩</div>
+              <div class="tut-card-title">Autoreferencias</div>
+              <div class="tut-card-desc">Una entidad puede relacionarse consigo misma. El lazo aparece en la esquina inferior-derecha con sus cardinalidades.</div>
+            </div>
+          </div>
+          <div class="tut-tour-cta">
+            <button class="btn-confirm" id="btn-start-tour">▶ Iniciar tour paso a paso</button>
+          </div>
+        </div>
+
+        <!-- ── Tab: Entidades ── -->
+        <div class="tut-panel" id="tab-entities">
+          <div class="tut-section">
+            <div class="tut-step-badge">1</div>
+            <div>
+              <div class="tut-step-title">Crear una entidad</div>
+              <div class="tut-step-desc">Seleccioná la herramienta <kbd>Agregar Entidad</kbd> (o presioná <kbd>E</kbd>) y hacé clic en el canvas. Luego escribí el nombre y presioná Enter.</div>
+            </div>
+          </div>
+          <div class="tut-section">
+            <div class="tut-step-badge">2</div>
+            <div>
+              <div class="tut-step-title">Agregar atributos</div>
+              <div class="tut-step-desc">Hacé clic en <strong>+ Agregar atributo</strong> dentro de la entidad. Podés configurar nombre, tipo de dato (Integer, Varchar, Date…), longitud y restricciones:</div>
+              <div class="tut-badges-row">
+                <span class="tut-badge pk">PK</span> Primary Key &nbsp;
+                <span class="tut-badge fk">FK</span> Foreign Key &nbsp;
+                <span class="tut-badge nn">NN</span> Not Null &nbsp;
+                <span class="tut-badge uq">UQ</span> Unique
+              </div>
+            </div>
+          </div>
+          <div class="tut-section">
+            <div class="tut-step-badge">3</div>
+            <div>
+              <div class="tut-step-title">Entidad débil</div>
+              <div class="tut-step-desc">Hacé clic en el botón <strong>W</strong> en la esquina superior izquierda de la entidad para marcarla como débil. Aparecerá un doble borde violeta y el badge <span class="tut-badge-weak">DÉBIL</span>. Una entidad débil necesita una <strong>relación identificadora</strong>.</div>
+            </div>
+          </div>
+          <div class="tut-section">
+            <div class="tut-step-badge">4</div>
+            <div>
+              <div class="tut-step-title">Renombrar entidad</div>
+              <div class="tut-step-desc">Doble clic sobre el nombre de la entidad para editarlo directamente.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Tab: Relaciones ── -->
+        <div class="tut-panel" id="tab-relations">
+          <div class="tut-section">
+            <div class="tut-step-badge">1</div>
+            <div>
+              <div class="tut-step-title">Crear una relación</div>
+              <div class="tut-step-desc">Seleccioná <kbd>Agregar Relación</kbd> (o <kbd>R</kbd>). Clic en la entidad <strong>origen</strong>, luego clic en la entidad <strong>destino</strong>. Se abrirá el diálogo.</div>
+            </div>
+          </div>
+          <div class="tut-section">
+            <div class="tut-step-badge">2</div>
+            <div>
+              <div class="tut-step-title">Cardinalidades Crow's Foot</div>
+              <div class="tut-step-desc">Seleccioná la cardinalidad para cada extremo:</div>
+              <div class="tut-cf-grid">
+                <div class="tut-cf-item"><span class="tut-cf-symbol">|</span><span>1 — Exactamente uno</span></div>
+                <div class="tut-cf-item"><span class="tut-cf-symbol">o|</span><span>0..1 — Cero o uno</span></div>
+                <div class="tut-cf-item"><span class="tut-cf-symbol">|&lt;</span><span>1..N — Uno o muchos</span></div>
+                <div class="tut-cf-item"><span class="tut-cf-symbol">o&lt;</span><span>0..N — Cero o muchos</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="tut-section">
+            <div class="tut-step-badge">3</div>
+            <div>
+              <div class="tut-step-title">Tipos de relación</div>
+              <div class="tut-step-desc">
+                <div class="tut-rel-type"><span class="tut-line-dashed">- - - - -</span> <strong>Regular</strong> — relación común entre entidades</div>
+                <div class="tut-rel-type" style="margin-top:6px"><span class="tut-line-solid">─────</span> <strong>Identificadora</strong> — usada con entidades débiles</div>
+              </div>
+            </div>
+          </div>
+          <div class="tut-section">
+            <div class="tut-step-badge">4</div>
+            <div>
+              <div class="tut-step-title">Relación autoreferenciada</div>
+              <div class="tut-step-desc">En modo <kbd>Agregar Relación</kbd>, clic en una entidad y luego clic <strong>en la misma entidad</strong> para crear un lazo recursivo (ej: EMPLEADO supervisa EMPLEADO).</div>
+            </div>
+          </div>
+          <div class="tut-section">
+            <div class="tut-step-badge">5</div>
+            <div>
+              <div class="tut-step-title">Editar o eliminar</div>
+              <div class="tut-step-desc">Doble clic sobre una relación para editarla. Seleccioná con clic y presioná <kbd>Delete</kbd> para eliminarla. O usá la herramienta <kbd>Eliminar</kbd>.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Tab: Jerarquías ── -->
+        <div class="tut-panel" id="tab-generalization">
+          <div class="tut-section">
+            <div class="tut-step-badge">1</div>
+            <div>
+              <div class="tut-step-title">Crear una jerarquía</div>
+              <div class="tut-step-desc">Seleccioná <kbd>Agregar Jerarquía</kbd> (o <kbd>G</kbd>). Hacé clic en el <strong>supertipo</strong>, luego en cada <strong>subtipo</strong>. Cuando termines, volvé a hacer clic en el supertipo para confirmar.</div>
+            </div>
+          </div>
+          <div class="tut-section">
+            <div class="tut-step-badge">2</div>
+            <div>
+              <div class="tut-step-title">Notación Mannino</div>
+              <div class="tut-step-desc">La jerarquía se dibuja con el supertipo arriba, una flecha vertical, la barra horizontal y los subtipos abajo. La etiqueta de restricción aparece en el punto de unión.</div>
+              <div class="tut-gen-preview">
+                <div style="text-align:center;font-family:monospace;font-size:12px;color:var(--fg-muted);line-height:1.8">
+                  <span style="color:var(--fg);font-weight:700">VEHÍCULO</span><br>
+                  ↑<br>
+                  <span style="color:var(--accent2);font-weight:700">D,C</span><br>
+                  ──────────<br>
+                  <span style="color:var(--accent)">AUTO</span> &nbsp;&nbsp; <span style="color:var(--accent)">MOTO</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="tut-section">
+            <div class="tut-step-badge">3</div>
+            <div>
+              <div class="tut-step-title">Restricciones</div>
+              <div class="tut-step-desc">
+                <strong style="color:var(--accent2)">D</strong> — <strong>Disjoint:</strong> los subtipos no se solapan (una instancia pertenece a un solo subtipo).<br><br>
+                <strong style="color:var(--accent2)">C</strong> — <strong>Complete:</strong> los subtipos cubren todo el supertipo (toda instancia del supertipo pertenece a algún subtipo).<br><br>
+                <strong style="color:var(--accent2)">D,C</strong> — Ambas restricciones activas.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Tab: Atajos ── -->
+        <div class="tut-panel" id="tab-tips">
+          <div class="tut-shortcuts-grid">
+            <div class="tut-shortcut-group">
+              <div class="tut-shortcut-title">Herramientas</div>
+              <div class="tut-shortcut-item"><kbd>V</kbd><span>Seleccionar</span></div>
+              <div class="tut-shortcut-item"><kbd>E</kbd><span>Agregar entidad</span></div>
+              <div class="tut-shortcut-item"><kbd>R</kbd><span>Agregar relación</span></div>
+              <div class="tut-shortcut-item"><kbd>G</kbd><span>Agregar jerarquía</span></div>
+              <div class="tut-shortcut-item"><kbd>H</kbd> / <kbd>Espacio</kbd><span>Mover entorno (mantener)</span></div>
+              <div class="tut-shortcut-item"><kbd>Esc</kbd><span>Volver a Seleccionar</span></div>
+            </div>
+            <div class="tut-shortcut-group">
+              <div class="tut-shortcut-title">Edición</div>
+              <div class="tut-shortcut-item"><kbd>Delete</kbd><span>Eliminar seleccionado</span></div>
+              <div class="tut-shortcut-item"><span class="tut-mouse">doble clic</span><span>Editar nombre / relación</span></div>
+              <div class="tut-shortcut-item"><span class="tut-mouse">rueda</span><span>Zoom in/out</span></div>
+              <div class="tut-shortcut-item"><span class="tut-mouse">botón central</span><span>Pan (arrastrar)</span></div>
+            </div>
+            <div class="tut-shortcut-group">
+              <div class="tut-shortcut-title">Archivo</div>
+              <div class="tut-shortcut-item"><span>Guardar</span><span>Exporta JSON</span></div>
+              <div class="tut-shortcut-item"><span>Cargar</span><span>Importa JSON guardado</span></div>
+              <div class="tut-shortcut-item"><span>PNG</span><span>Imagen de alta resolución</span></div>
+            </div>
+          </div>
+          <div class="tut-tip-box">
+            💡 <strong>Tip:</strong> Al mover entidades, las relaciones y jerarquías se actualizan automáticamente. Si dos relaciones salen del mismo lado de una entidad, se distribuyen automáticamente para evitar superposiciones.
+          </div>
+        </div>
+
+      </div><!-- fin tutorial-body -->
+
+      <div class="tutorial-footer">
+        <div class="tut-nav">
+          <button class="btn-cancel" id="tut-prev" disabled>← Anterior</button>
+          <span class="tut-page-indicator" id="tut-page-indicator"></span>
+          <button class="btn-cancel" id="tut-next">Siguiente →</button>
+        </div>
+        <button class="btn-confirm" id="tutorial-close-btn">Entendido</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overlay del tour paso a paso -->
+  <div id="tour-overlay" class="tour-overlay hidden"></div>
+  <div id="tour-tooltip" class="tour-tooltip hidden">
+    <div class="tour-tooltip-step" id="tour-step-label"></div>
+    <div class="tour-tooltip-title" id="tour-title"></div>
+    <div class="tour-tooltip-desc"  id="tour-desc"></div>
+    <div class="tour-tooltip-nav">
+      <button class="btn-cancel" id="tour-prev">← Atrás</button>
+      <span id="tour-counter"></span>
+      <button class="btn-confirm" id="tour-next">Siguiente →</button>
     </div>
   </div>
 

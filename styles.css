@@ -1542,3 +1542,341 @@ html, body {
   stroke-width: 2 !important;
   filter: drop-shadow(0 0 5px rgba(79,158,255,0.3));
 }
+
+/* ===== TUTORIAL ===== */
+
+.btn-help { color: var(--accent2) !important; }
+.btn-help:hover { background: var(--accent2-dim) !important; border-color: var(--accent2) !important; }
+
+.modal-tutorial {
+  width: 680px;
+  max-width: 96vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.tutorial-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Tabs */
+.tutorial-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+}
+
+.tut-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--fg-muted);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: all 0.12s;
+  margin-bottom: -1px;
+}
+
+.tut-tab:hover { color: var(--fg); }
+.tut-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Panel body */
+.tutorial-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.tutorial-body::-webkit-scrollbar { width: 4px; }
+.tutorial-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.tut-panel { display: none; }
+.tut-panel.active { display: block; }
+
+/* Overview grid */
+.tut-intro {
+  font-size: 13px;
+  color: var(--fg-muted);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.tut-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.tut-card {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.tut-card-icon { font-size: 20px; line-height: 1; }
+.tut-card-title { font-size: 13px; font-weight: 600; color: var(--fg); }
+.tut-card-desc { font-size: 11.5px; color: var(--fg-muted); line-height: 1.5; }
+
+.tut-tour-cta { text-align: center; padding-top: 8px; }
+
+/* Steps */
+.tut-section {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.tut-section:last-child { border-bottom: none; }
+
+.tut-step-badge {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tut-step-title { font-size: 13px; font-weight: 600; color: var(--fg); margin-bottom: 5px; }
+.tut-step-desc  { font-size: 12px; color: var(--fg-muted); line-height: 1.6; }
+
+/* Badges de atributos */
+.tut-badges-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.tut-badge { font-family: var(--font-mono); font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 3px; }
+.tut-badge.pk { background: #2a2000; color: #f6c90e; }
+.tut-badge.fk { background: var(--accent2-dim); color: var(--accent2); }
+.tut-badge.nn { background: var(--bg4); color: var(--fg-muted); border: 1px solid var(--border2); }
+.tut-badge.uq { background: #0d3326; color: var(--success); }
+.tut-badge-weak { font-family: var(--font-mono); font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 3px; background: var(--accent2-dim); color: var(--accent2); }
+
+/* Crow's Foot grid */
+.tut-cf-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.tut-cf-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--fg-muted);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 8px;
+}
+
+.tut-cf-symbol {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 24px;
+}
+
+/* Líneas de muestra */
+.tut-rel-type { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.tut-line-dashed { font-family: var(--font-mono); color: var(--accent); letter-spacing: 2px; }
+.tut-line-solid  { font-family: var(--font-mono); color: var(--accent); }
+
+/* Preview jerarquía */
+.tut-gen-preview {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-top: 10px;
+  display: inline-block;
+}
+
+/* Atajos */
+.tut-shortcuts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.tut-shortcut-group { display: flex; flex-direction: column; gap: 5px; }
+.tut-shortcut-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--fg-subtle);
+  margin-bottom: 4px;
+}
+
+.tut-shortcut-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--fg-muted);
+}
+
+kbd {
+  background: var(--bg4);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg);
+  white-space: nowrap;
+}
+
+.tut-mouse {
+  background: var(--bg4);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 10px;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+.tut-tip-box {
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--fg-muted);
+  line-height: 1.6;
+}
+
+/* Footer del tutorial */
+.tutorial-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.tut-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tut-page-indicator {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--fg-subtle);
+  min-width: 50px;
+  text-align: center;
+}
+
+/* ===== TOUR PASO A PASO ===== */
+
+.tour-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 500;
+  pointer-events: none;
+}
+
+.tour-overlay.hidden { display: none; }
+
+.tour-highlight {
+  position: fixed;
+  border: 2px solid var(--accent);
+  border-radius: 6px;
+  box-shadow: 0 0 0 4px rgba(79,158,255,0.25), 0 0 20px rgba(79,158,255,0.2);
+  pointer-events: none;
+  z-index: 501;
+  transition: all 0.3s ease;
+  animation: tourPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes tourPulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(79,158,255,0.25); }
+  50%       { box-shadow: 0 0 0 8px rgba(79,158,255,0.1); }
+}
+
+.tour-tooltip {
+  position: fixed;
+  z-index: 502;
+  background: var(--bg2);
+  border: 1.5px solid var(--accent);
+  border-radius: 10px;
+  padding: 16px 18px;
+  max-width: 300px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  animation: slideUp 0.2s ease;
+}
+
+.tour-tooltip.hidden { display: none; }
+
+.tour-tooltip-step {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--accent);
+  margin-bottom: 6px;
+  font-family: var(--font-mono);
+}
+
+.tour-tooltip-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg);
+  margin-bottom: 8px;
+}
+
+.tour-tooltip-desc {
+  font-size: 12px;
+  color: var(--fg-muted);
+  line-height: 1.6;
+  margin-bottom: 14px;
+}
+
+.tour-tooltip-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#tour-counter {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--fg-subtle);
+}

@@ -902,7 +902,7 @@ export class App {
     this.diagram = new Diagram(); this.deselect(); this.renderAll();
   }
 
-  saveProject()  { this._download(JSON.stringify(this.diagram.toJSON(), null, 2), 'erflow-diagram.json', 'application/json'); }
+  saveProject()  { this._download(JSON.stringify(this.diagram.toJSON(), null, 2), 'TGD-ER-diagram.json', 'application/json'); }
   exportJSON()   { this.saveProject(); }
 
   loadProject(file) {
