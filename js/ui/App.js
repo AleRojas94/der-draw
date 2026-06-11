@@ -150,12 +150,49 @@ export class App {
   _endPan()    { this._isPanning = false; this.canvasArea.classList.remove('panning'); }
 
   _zoomAt(factor, cx, cy) {
+    // cx, cy son coordenadas clientX/clientY (absolutas de pantalla)
+    // _screenToWorld ya descuenta r.left/r.top internamente
     const pt = this._screenToWorld(cx, cy);
     this.scale = Math.min(Math.max(this.scale * factor, 0.15), 4);
-    this.panX = cx - pt.x * this.scale; this.panY = cy - pt.y * this.scale;
+    // panX/panY deben satisfacer: cx = r.left + panX + pt.x * newScale
+    // → panX = cx - r.left - pt.x * newScale
+    const r = this.canvasArea.getBoundingClientRect();
+    this.panX = (cx - r.left) - pt.x * this.scale;
+    this.panY = (cy - r.top)  - pt.y * this.scale;
     this._applyTransform(); this._updateZoomLabel();
   }
-  zoom(factor) { const r = this.canvasArea.getBoundingClientRect(); this._zoomAt(factor, r.left+r.width/2, r.top+r.height/2); }
+
+  /**
+   * Zoom con botones +/-: centra el zoom en el centro visual del contenido.
+   * Si no hay entidades, usa el centro del canvas-area.
+   */
+  zoom(factor) {
+    const r = this.canvasArea.getBoundingClientRect();
+
+    if (this.diagram.entities.length === 0) {
+      // Sin contenido: zoom en el centro del canvas (coordenadas cliente)
+      this._zoomAt(factor, r.left + r.width/2, r.top + r.height/2);
+      return;
+    }
+
+    // Calcular el bounding box de todas las entidades en coordenadas mundo
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    this.diagram.entities.forEach(e => {
+      minX = Math.min(minX, e.x);          minY = Math.min(minY, e.y);
+      maxX = Math.max(maxX, e.x + e.width); maxY = Math.max(maxY, e.y + e.height);
+    });
+
+    // Centro del diagrama en coordenadas mundo
+    const worldCx = (minX + maxX) / 2;
+    const worldCy = (minY + maxY) / 2;
+
+    // Convertir a coordenadas cliente (clientX/clientY):
+    // clientX = r.left + panX + worldCx * scale
+    const clientCx = r.left + this.panX + worldCx * this.scale;
+    const clientCy = r.top  + this.panY + worldCy * this.scale;
+
+    this._zoomAt(factor, clientCx, clientCy);
+  }
   _applyTransform() { this.diagRoot.setAttribute('transform', `translate(${this.panX},${this.panY}) scale(${this.scale})`); }
   _updateZoomLabel() { this.zoomLabel.textContent = `${Math.round(this.scale*100)}%`; }
   _screenToWorld(sx, sy) { const r = this.canvasArea.getBoundingClientRect(); return { x:(sx-r.left-this.panX)/this.scale, y:(sy-r.top-this.panY)/this.scale }; }
@@ -902,7 +939,7 @@ export class App {
     this.diagram = new Diagram(); this.deselect(); this.renderAll();
   }
 
-  saveProject()  { this._download(JSON.stringify(this.diagram.toJSON(), null, 2), 'TGD-ER-diagram.json', 'application/json'); }
+  saveProject()  { this._download(JSON.stringify(this.diagram.toJSON(), null, 2), 'erflow-diagram.json', 'application/json'); }
   exportJSON()   { this.saveProject(); }
 
   loadProject(file) {
