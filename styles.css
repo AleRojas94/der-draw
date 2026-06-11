@@ -1,7 +1,10 @@
 /* ===================================================
-   ERFlow — Estilos principales
+   diagramAR — Estilos principales
    Tema: Dark mode industrial / precision tooling
    =================================================== */
+#celeste{
+  color: #74ACDF;
+}  
 
 :root {
   --bg:          #0f1117;
