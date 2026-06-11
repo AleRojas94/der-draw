@@ -99,12 +99,7 @@ export class SVGEntityRenderer {
     const W = entity.width, HH = entity.headerH, AH = entity.attrH;
     const y = HH + index * AH;
     const row = svgEl('g', { class: 'attr-row', 'data-attr-id': attr.id });
-
-    const bg = svgEl('rect', { x: 0, y, width: W, height: AH, fill: 'transparent' });
-    bg.style.cursor = 'pointer';
-    bg.addEventListener('mouseenter', () => bg.setAttribute('fill', 'rgba(255,255,255,0.03)'));
-    bg.addEventListener('mouseleave', () => bg.setAttribute('fill', 'transparent'));
-    row.appendChild(bg);
+    row.style.cursor = 'pointer';
 
     if (index > 0) row.appendChild(svgEl('line', { class: 'attr-sep', x1: 8, y1: y, x2: W-8, y2: y }));
 
@@ -127,6 +122,15 @@ export class SVGEntityRenderer {
       row.appendChild(typeEl);
     }
 
+    // El rect de fondo va AL FINAL del grupo para quedar encima en eventos,
+    // pero con fill transparente para no tapar los textos visualmente.
+    // Esto garantiza que el hover y el dblclick funcionen en toda el área del atributo.
+    const bg = svgEl('rect', { x: 0, y, width: W, height: AH, fill: 'transparent' });
+    bg.addEventListener('mouseenter', () => bg.setAttribute('fill', 'rgba(255,255,255,0.03)'));
+    bg.addEventListener('mouseleave', () => bg.setAttribute('fill', 'transparent'));
+    row.appendChild(bg);
+
+    // dblclick en el rect (que está encima de todo) abre el editor
     bg.addEventListener('dblclick', (e) => {
       e.stopPropagation();
       app.openAttrEditor(entity, attr, document.querySelector(`[data-id="${entity.id}"]`));
