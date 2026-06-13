@@ -22,7 +22,7 @@
         <line x1="17" y1="7" x2="17" y2="15" stroke="var(--fg-muted)" stroke-width="1.5"/>
         <line x1="9" y1="18" x2="13" y2="18" stroke="var(--fg-muted)" stroke-width="1.5"/>
       </svg>
-      <span class="brand-name">DiagramA<span class="brand-r">R</span></span>
+      <span class="brand-name">diagramA<span class="brand-r">R</span></span>
     </div>
 
     <div class="topbar-actions">
@@ -555,11 +555,26 @@
             </div>
             <div class="tut-shortcut-group">
               <div class="tut-shortcut-title">Archivo</div>
-              <div class="tut-shortcut-item"><span>Guardar</span><span>Exporta JSON</span></div>
-              <div class="tut-shortcut-item"><span>Cargar</span><span>Importa JSON guardado</span></div>
-              <div class="tut-shortcut-item"><span>PNG</span><span>Imagen de alta resolución</span></div>
+              <div class="tut-shortcut-item"><kbd>Ctrl</kbd>+<kbd>S</kbd><span>Guardar</span></div>
+              <div class="tut-shortcut-item"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd><span>Guardar como</span></div>
+              <div class="tut-shortcut-item"><kbd>⌘</kbd>+<kbd>S</kbd><span>Guardar (Mac)</span></div>
+              <div class="tut-shortcut-item"><kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd><span>Guardar como (Mac)</span></div>
             </div>
           </div>
+
+          <div class="tut-section" style="margin-top:12px">
+            <div class="tut-step-badge" style="background:var(--accent-dim);border-color:var(--accent);color:var(--accent)">💾</div>
+            <div>
+              <div class="tut-step-title">Sistema de guardado</div>
+              <div class="tut-step-desc">
+                <strong>Abrir</strong> — carga un archivo <code>.json</code>. En Chrome/Edge usa el diálogo nativo del sistema.<br><br>
+                <strong>Guardar</strong> (<kbd>Ctrl+S</kbd>) — si abriste un archivo, lo <strong>sobrescribe directamente</strong> sin preguntar. Si es un diagrama nuevo, actúa como "Guardar como".<br><br>
+                <strong>Guardar como</strong> (<kbd>Ctrl+Shift+S</kbd>) — siempre pide nombre y ubicación. Crea un archivo nuevo sin tocar el anterior.<br><br>
+                <strong>JSON</strong> — descarga una copia en la carpeta Descargas, sin diálogo de ubicación. Útil para hacer respaldos rápidos o compartir el archivo sin afectar el archivo de trabajo principal.
+              </div>
+            </div>
+          </div>
+
           <div class="tut-tip-box">
             💡 <strong>Tip:</strong> Al mover entidades, las relaciones y jerarquías se actualizan automáticamente. Si dos relaciones salen del mismo lado de una entidad, se distribuyen automáticamente para evitar superposiciones.
           </div>

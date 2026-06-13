@@ -202,22 +202,19 @@ export class App {
 
   // ── Teclado ───────────────────────────────────────────────────────────────
   _bindKeyboard() {
-    // Atajos de guardado en fase de CAPTURA para interceptar antes que el navegador
     document.addEventListener('keydown', (e) => {
-      const ctrl = e.ctrlKey || e.metaKey;
-      if (ctrl && e.key.toLowerCase() === 's') {
+      // ── Atajos de guardado (funcionan incluso en inputs) ──────────────────
+      const ctrl = e.ctrlKey || e.metaKey; // Ctrl en Win/Linux, Cmd en Mac
+      if (ctrl && e.key === 's') {
         e.preventDefault();
-        e.stopPropagation();
         if (e.shiftKey) {
-          this.saveProjectAs();
+          this.saveProjectAs(); // Ctrl+Shift+S → Guardar como
         } else {
-          this.saveProject();
+          this.saveProject();   // Ctrl+S → Guardar (sobrescribe o pide nombre)
         }
+        return;
       }
-    }, true); // <-- fase de captura: intercepta ANTES que el navegador
 
-    // Resto de atajos en fase de burbuja (normal)
-    document.addEventListener('keydown', (e) => {
       if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
       if ((e.code === 'Space' || e.key === 'h' || e.key === 'H') && !this._spaceDown) {
         if (e.code === 'Space') e.preventDefault();

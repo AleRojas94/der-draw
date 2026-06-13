@@ -17,22 +17,22 @@ export class Tutorial {
       {
         target: '#tool-select',
         title: 'Seleccionar',
-        desc: 'Usá esta herramienta para seleccionar, mover y editar entidades y relaciones. Es el modo predeterminado. Atajo de teclado: V.',
+        desc: 'Usá esta herramienta para seleccionar, mover y editar entidades y relaciones. Es el modo predeterminado. Atajo: V.',
       },
       {
         target: '#tool-pan',
         title: 'Mover Entorno',
-        desc: 'Arrastrá el canvas para navegar por el diagrama. También podés mantener presionado Espacio o H en cualquier momento para activarlo temporalmente.',
+        desc: 'Arrastrá el canvas para navegar por el diagrama. También podés mantener presionado Espacio o H en cualquier momento para activarlo temporalmente sin cambiar de herramienta.',
       },
       {
         target: '#tool-entity',
         title: 'Agregar Entidad',
-        desc: 'Hacé clic en el canvas para colocar una nueva entidad. Se abrirá automáticamente la edición del nombre. Luego usá "+ Agregar atributo" para completarla. Atajo: E.',
+        desc: 'Hacé clic en el canvas para colocar una nueva entidad. Se abre automáticamente la edición del nombre. Luego usá "+ Agregar atributo" para completarla. Atajo: E.',
       },
       {
         target: '#tool-relation',
         title: 'Agregar Relación',
-        desc: 'Clic en la entidad origen, luego clic en la entidad destino. Se abrirá el diálogo para configurar cardinalidades, nombre y roles. Para autoref, clic dos veces en la misma entidad. Atajo: R.',
+        desc: 'Clic en la entidad origen, luego clic en la entidad destino. Se abrirá el diálogo para configurar cardinalidades, nombre y roles. Para una relación autoreferenciada, hacé clic dos veces en la misma entidad. Atajo: R.',
       },
       {
         target: '#tool-generalization',
@@ -47,17 +47,32 @@ export class Tutorial {
       {
         target: '#btn-fit',
         title: 'Ajustar Vista',
-        desc: 'Centra y ajusta el zoom para mostrar todo el diagrama en pantalla. Muy útil cuando tenés muchas entidades.',
+        desc: 'Centra y ajusta el zoom para mostrar todo el diagrama en pantalla. Muy útil cuando tenés muchas entidades o el diagrama quedó fuera de la vista.',
+      },
+      {
+        target: '#btn-load',
+        title: 'Abrir archivo',
+        desc: 'Abre un archivo .json guardado anteriormente. En Chrome y Edge usa el diálogo nativo del sistema operativo. En Firefox descarga de forma clásica.',
       },
       {
         target: '#btn-save',
-        title: 'Guardar Proyecto',
-        desc: 'Guarda todo el diagrama como un archivo JSON. Podés cargarlo después con el botón Cargar para continuar trabajando.',
+        title: 'Guardar',
+        desc: 'Si abriste un archivo, lo sobrescribe directamente sin preguntar. Si es un diagrama nuevo, te pide nombre y ubicación. Atajo de teclado: Ctrl+S (o ⌘+S en Mac).',
+      },
+      {
+        target: '#btn-save-as',
+        title: 'Guardar como',
+        desc: 'Siempre pide nombre y ubicación, creando un archivo nuevo sin modificar el anterior. Ideal para guardar versiones distintas del mismo diagrama. Atajo: Ctrl+Shift+S.',
       },
       {
         target: '#btn-export-png',
         title: 'Exportar PNG',
-        desc: 'Genera una imagen PNG de alta resolución (2×) del diagrama completo, con todos los colores y estilos correctos.',
+        desc: 'Genera una imagen PNG de alta resolución (2×) del diagrama completo, con todos los colores y estilos correctos. Ideal para incluir en informes o presentaciones.',
+      },
+      {
+        target: '#btn-export-json',
+        title: 'JSON — Exportar copia',
+        desc: 'Descarga una copia del diagrama en la carpeta Descargas sin diálogo de ubicación. Útil para hacer respaldos rápidos o compartir el archivo sin afectar el archivo de trabajo principal.',
       },
     ];
 
