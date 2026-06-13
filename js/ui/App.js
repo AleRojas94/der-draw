@@ -24,6 +24,8 @@ export class App {
     this._editingRel     = null;
     this._spaceDown      = false;
     this._prevTool       = 'select';
+    this._fileHandle     = null;       // FileSystemFileHandle del archivo abierto
+    this._lastFilename   = null;       // nombre sin extensión para sugerencias
 
     // Estado para creación de generalización
     this._genSupertype   = null;   // entidad supertipo seleccionada
@@ -42,7 +44,8 @@ export class App {
   _init() {
     this._bindToolButtons(); this._bindTopbarButtons(); this._bindCanvasEvents();
     this._bindKeyboard(); this._bindRelModal(); this._bindGenModal();
-    this._updateToolUI(); this._loadExample();
+    this._updateToolUI(); 
+    //this._loadExample();
   }
 
   _loadExample() {
@@ -103,8 +106,9 @@ export class App {
   // ── Topbar ────────────────────────────────────────────────────────────────
   _bindTopbarButtons() {
     document.getElementById('btn-new').addEventListener('click',         () => this.newDiagram());
+    document.getElementById('btn-load').addEventListener('click',        () => this.openProject());
     document.getElementById('btn-save').addEventListener('click',        () => this.saveProject());
-    document.getElementById('btn-load').addEventListener('click',        () => document.getElementById('file-input').click());
+    document.getElementById('btn-save-as').addEventListener('click',     () => this.saveProjectAs());
     document.getElementById('btn-export-png').addEventListener('click',  () => this.exportPNG());
     document.getElementById('btn-export-json').addEventListener('click', () => this.exportJSON());
     document.getElementById('file-input').addEventListener('change', (e) => {
@@ -804,14 +808,6 @@ export class App {
     else             this.diagRoot.appendChild(el);
   }
 
-  _renderOneRelationship(rel) {
-    const from = this.diagram.getEntity(rel.fromId), to = this.diagram.getEntity(rel.toId);
-    if (!from || !to) return;
-    const el = SVGRelationRenderer.render(rel, from, to, this);
-    const firstEntity = this.diagRoot.querySelector('.entity-group');
-    if (firstEntity) this.diagRoot.insertBefore(el, firstEntity);
-    else             this.diagRoot.appendChild(el);
-  }
 
   updateRelationships() {
     // Calcular ports con offset para evitar superposición
@@ -936,15 +932,154 @@ export class App {
   // ── Guardar / Cargar / Exportar ───────────────────────────────────────────
   newDiagram() {
     if (this.diagram.entities.length > 0 && !confirm('¿Crear un nuevo diagrama? Se perderán los cambios no guardados.')) return;
-    this.diagram = new Diagram(); this.deselect(); this.renderAll();
+    this.diagram = new Diagram();
+    this._fileHandle   = null;
+    this._lastFilename = null;
+    this._updateFilenameIndicator();
+    this.deselect(); this.renderAll();
   }
 
-  saveProject()  { this._download(JSON.stringify(this.diagram.toJSON(), null, 2), 'diagramAR-diagram.json', 'application/json'); }
-  exportJSON()   { this.saveProject(); }
+  // ── Gestión de archivos ───────────────────────────────────────────────────
+  //
+  // Si el navegador soporta File System Access API (Chrome/Edge):
+  //   · Abrir  → showOpenFilePicker → guarda el FileHandle
+  //   · Guardar → escribe en el mismo FileHandle (sobrescribe el archivo)
+  //   · Guardar como → showSaveFilePicker → nuevo FileHandle
+  //
+  // Si no soporta (Firefox/Safari/GitHub Pages sin permisos):
+  //   · Fallback a <input type=file> y descarga con <a download>
+
+  /** Detecta soporte real de File System Access API */
+  get _hasFileAPI() {
+    return typeof window.showOpenFilePicker === 'function';
+  }
+
+  /** Actualiza el indicador de nombre de archivo en la topbar */
+  _updateFilenameIndicator() {
+    const el = document.getElementById('topbar-filename');
+    if (!el) return;
+    if (this._fileHandle) {
+      el.textContent = '📄 ' + this._fileHandle.name;
+      el.title = this._fileHandle.name;
+      el.classList.add('has-file');
+    } else if (this._lastFilename) {
+      el.textContent = this._lastFilename + '.json';
+      el.title = 'Sin archivo abierto — Guardar descargará una copia';
+      el.classList.remove('has-file');
+    } else {
+      el.textContent = '';
+      el.classList.remove('has-file');
+    }
+  }
+
+  /** Abre un archivo JSON usando el diálogo nativo o <input type=file> */
+  async openProject() {
+    if (this._hasFileAPI) {
+      let handles;
+      try {
+        handles = await window.showOpenFilePicker({
+          types: [{ description: 'Diagrama TGD-ER', accept: { 'application/json': ['.json'] } }],
+          multiple: false,
+        });
+      } catch (e) {
+        if (e.name === 'AbortError') return;
+        throw e;
+      }
+      const handle = handles[0];
+      const file   = await handle.getFile();
+      const text   = await file.text();
+      try {
+        this.diagram = Diagram.fromJSON(JSON.parse(text));
+        this._fileHandle   = handle;
+        this._lastFilename = handle.name.replace(/\.json$/i, '');
+        this.renderAll(); this.fitView();
+        this._updateFilenameIndicator();
+      } catch (err) {
+        alert('Error al cargar: ' + err.message);
+      }
+    } else {
+      // Fallback: usar el <input type=file> oculto
+      document.getElementById('file-input').click();
+    }
+  }
+
+  /**
+   * Guardar — sobrescribe el archivo abierto si hay FileHandle,
+   * de lo contrario actúa como "Guardar como".
+   */
+  async saveProject() {
+    const json = JSON.stringify(this.diagram.toJSON(), null, 2);
+
+    if (this._hasFileAPI && this._fileHandle) {
+      // Sobrescribir el archivo abierto directamente
+      try {
+        const writable = await this._fileHandle.createWritable();
+        await writable.write(json);
+        await writable.close();
+        this._updateFilenameIndicator();
+        return;
+      } catch (e) {
+        if (e.name === 'AbortError') return;
+        // Si pierde el permiso, ofrecer "Guardar como"
+        console.warn('No se pudo sobrescribir, intentando Guardar como:', e);
+      }
+    }
+
+    // Sin FileHandle: usar "Guardar como"
+    await this.saveProjectAs();
+  }
+
+  /** Guardar como — siempre pide nombre/ubicación nueva */
+  async saveProjectAs() {
+    const json = JSON.stringify(this.diagram.toJSON(), null, 2);
+
+    if (this._hasFileAPI) {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: (this._lastFilename || 'diagrama-er') + '.json',
+          types: [{ description: 'Diagrama TGD-ER', accept: { 'application/json': ['.json'] } }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(json);
+        await writable.close();
+        this._fileHandle   = handle;
+        this._lastFilename = handle.name.replace(/\.json$/i, '');
+        this._updateFilenameIndicator();
+      } catch (e) {
+        if (e.name === 'AbortError') return;
+        // Fallback si el picker falla
+        this._fallbackDownload(json);
+      }
+    } else {
+      this._fallbackDownload(json);
+    }
+  }
+
+  /** Descarga clásica con prompt de nombre (fallback para Firefox/Safari) */
+  _fallbackDownload(json) {
+    const suggested = this._lastFilename || 'diagrama-er';
+    const input = window.prompt('Nombre del archivo (sin extensión):', suggested);
+    if (input === null) return;
+    const filename = (input.trim() || suggested) + '.json';
+    this._lastFilename = input.trim() || suggested;
+    this._updateFilenameIndicator();
+    this._download(json, filename, 'application/json');
+  }
+
+  exportJSON() { this.saveProjectAs(); }
 
   loadProject(file) {
+    // Usado por el <input type=file> fallback
+    this._fileHandle   = null; // sin handle en fallback
+    this._lastFilename = file.name.replace(/\.json$/i, '');
     const reader = new FileReader();
-    reader.onload = (e) => { try { this.diagram = Diagram.fromJSON(JSON.parse(e.target.result)); this.renderAll(); this.fitView(); } catch(err) { alert('Error al cargar: ' + err.message); } };
+    reader.onload = (e) => {
+      try {
+        this.diagram = Diagram.fromJSON(JSON.parse(e.target.result));
+        this.renderAll(); this.fitView();
+        this._updateFilenameIndicator();
+      } catch(err) { alert('Error al cargar: ' + err.message); }
+    };
     reader.readAsText(file);
   }
 

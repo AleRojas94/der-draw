@@ -1,10 +1,7 @@
 /* ===================================================
-   diagramAR — Estilos principales
+   ERFlow — Estilos principales
    Tema: Dark mode industrial / precision tooling
    =================================================== */
-#celeste{
-  color: #74ACDF;
-}  
 
 :root {
   --bg:          #0f1117;
@@ -1882,4 +1879,30 @@ kbd {
   font-size: 11px;
   font-family: var(--font-mono);
   color: var(--fg-subtle);
+}
+
+/* ===== INDICADOR DE ARCHIVO ACTUAL ===== */
+.topbar-filename {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-subtle);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+
+.topbar-filename.has-file {
+  color: var(--success);
+  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+}
+
+/* ===== BRAND NAME DiagramAR ===== */
+.brand-r {
+  color: var(--accent);   /* celeste = --accent = #4f9eff */
+  font-weight: 700;
 }
